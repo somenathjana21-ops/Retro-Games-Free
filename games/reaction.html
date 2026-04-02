@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REACTION TEST — Neon Arcade</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Shell ─────────────────────────────────────────────────── */
+    body { cursor: none; overflow-x: hidden; }
+
+    #cursor {
+      position: fixed; width: 14px; height: 14px;
+      border: 2px solid var(--neon-cyan); border-radius: 50%;
+      pointer-events: none; z-index: 9999;
+      transform: translate(-50%,-50%);
+      box-shadow: var(--glow-cyan); mix-blend-mode: screen;
+      transition: width .12s, height .12s, border-color .12s, border-radius .12s;
+    }
+    #cursor.active { width: 28px; height: 28px; border-color: var(--neon-pink); box-shadow: var(--glow-pink); }
+    #cursor.crosshair { border-radius: 2px; border-color: var(--neon-purple); box-shadow: var(--glow-purple); }
+
+    /* ── Page layout ───────────────────────────────────────────── */
+    #page {
+      position: relative; z-index: 2;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 0 16px 60px;
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    .page-header {
+      width: 100%; max-width: 760px;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 52px 0 20px;
+      animation: fadeSlideDown .7s var(--ease-smooth) both;
+    }
+    .game-eyebrow {
+      font-family: var(--font-mono); font-size: .62rem;
+      letter-spacing: .38em; color: var(--neon-pink);
+      text-shadow: var(--text-glow-pink); margin-bottom: 10px;
+    }
+    .game-title {
+      font-family: var(--font-title); font-weight: 900;
+      font-size: clamp(1.6rem, 5vw, 3rem); letter-spacing: .07em;
+      background: linear-gradient(120deg, var(--neon-pink) 0%, var(--neon-purple) 55%, var(--neon-cyan) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 18px rgba(255,0,110,.4));
+    }
+
+    /* ── HUD strip ─────────────────────────────────────────────── */
+    .hud-strip {
+      display: flex; align-items: stretch;
+      border: 1px solid rgba(255,0,110,.2);
+      border-radius: var(--radius-md); overflow: hidden;
+      background: rgba(5,5,15,.75); backdrop-filter: blur(14px);
+      margin-top: 22px; width: 100%; max-width: 660px;
+      animation: fadeSlideDown .7s .1s var(--ease-smooth) both;
+    }
+    .hud-cell {
+      flex: 1; text-align: center; padding: 13px 8px;
+      position: relative;
+    }
+    .hud-cell + .hud-cell::before {
+      content: ''; position: absolute; left: 0; top: 18%; height: 64%;
+      width: 1px;
+      background: linear-gradient(to bottom, transparent, rgba(255,0,110,.22), transparent);
+    }
+    .hud-cell-label {
+      font-family: var(--font-mono); font-size: .52rem;
+      letter-spacing: .2em; color: var(--text-muted);
+      text-transform: uppercase; margin-bottom: 5px;
+    }
+    .hud-cell-value {
+      font-family: var(--font-title); font-weight: 700;
+      font-size: clamp(1rem, 3vw, 1.4rem);
+      color: var(--neon-cyan); text-shadow: var(--text-glow-cyan); line-height: 1;
+    }
+    .hud-cell-value.pink { color: var(--neon-pink); text-shadow: var(--text-glow-pink); }
+    .hud-cell-value.purple { color: var(--neon-purple); text-shadow: var(--text-glow-purple); }
+    .hud-cell-value.pop { animation: scorePop .3s var(--ease-snap); }
+
+    /* ── Trial dots ────────────────────────────────────────────── */
+    .trial-dots {
+      display: flex; gap: 10px; margin-top: 16px;
+      animation: fadeSlideDown .7s .15s var(--ease-smooth) both;
+    }
+    .trial-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.18);
+      background: transparent;
+      transition: background .3s, border-color .3s, box-shadow .3s;
+    }
+    .trial-dot.done   { background: var(--neon-cyan);   border-color: var(--neon-cyan);   box-shadow: var(--glow-cyan);   }
+    .trial-dot.active { background: var(--neon-pink);   border-color: var(--neon-pink);   box-shadow: var(--glow-pink);   animation: neonPulsePink 0.8s ease-in-out infinite; }
+    .trial-dot.best   { background: var(--neon-purple); border-color: var(--neon-purple); box-shadow: var(--glow-purple); }
+
+    /* ── Arena ─────────────────────────────────────────────────── */
+    #arena-wrap {
+      position: relative;
+      width: 100%; max-width: 640px;
+      margin-top: 22px;
+      animation: fadeSlideDown .7s .2s var(--ease-smooth) both;
+    }
+
+    #arena {
+      position: relative;
+      width: 100%;
+      padding-bottom: 60%;          /* 5:3 aspect ratio */
+      background: rgba(4,4,14,.92);
+      border: 1px solid rgba(255,0,110,.18);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      cursor: none;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 40px rgba(255,0,110,.06), inset 0 0 60px rgba(0,0,0,.5);
+      transition: border-color .3s;
+    }
+    #arena::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,0,110,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,0,110,.04) 1px, transparent 1px);
+      background-size: 36px 36px;
+      pointer-events: none;
+    }
+
+    /* State-based arena tints */
+    #arena.state-ready   { border-color: rgba(0,245,255,.25); }
+    #arena.state-waiting { border-color: rgba(180,0,255,.3); box-shadow: 0 0 30px rgba(180,0,255,.08), inset 0 0 60px rgba(0,0,0,.5); }
+    #arena.state-go      { border-color: var(--neon-pink); box-shadow: 0 0 40px rgba(255,0,110,.2), inset 0 0 60px rgba(0,0,0,.5); }
+    #arena.state-toosoon { border-color: var(--neon-yellow); box-shadow: 0 0 40px rgba(255,230,0,.15), inset 0 0 60px rgba(0,0,0,.5); }
+    #arena.state-result  { border-color: var(--neon-cyan); }
+
+    /* ── Target shape ──────────────────────────────────────────── */
+    #target {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 120px; height: 120px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: none;
+      transition: transform .25s var(--ease-snap),
+                  background .25s ease,
+                  border-color .25s ease,
+                  box-shadow .25s ease,
+                  border-radius .25s ease;
+    }
+    #target.visible { transform: translate(-50%, -50%) scale(1); }
+    #target.shape-circle  { border-radius: 50%; }
+    #target.shape-square  { border-radius: var(--radius-md); }
+    #target.shape-diamond { border-radius: 0; transform: translate(-50%, -50%) scale(1) rotate(45deg); }
+
+    /* Idle / waiting state — dim purple outline */
+    #target.idle {
+      background: rgba(180,0,255,.06);
+      border: 2px solid rgba(180,0,255,.35);
+      box-shadow: 0 0 18px rgba(180,0,255,.12);
+    }
+    /* GO — neon pink, pulsing */
+    #target.go {
+      background: rgba(255,0,110,.14);
+      border: 2px solid var(--neon-pink);
+      box-shadow: 0 0 28px rgba(255,0,110,.55), 0 0 60px rgba(255,0,110,.2), inset 0 0 20px rgba(255,0,110,.1);
+      animation: targetPulse .5s ease-in-out infinite alternate;
+    }
+
+    .target-icon {
+      font-size: 2rem; line-height: 1;
+      pointer-events: none; user-select: none;
+      transition: transform .25s var(--ease-snap);
+    }
+    #target.shape-diamond .target-icon {
+      transform: rotate(-45deg);
+    }
+
+    /* ── Center text overlay (instructions / results) ───────────── */
+    #center-text {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 24px;
+      pointer-events: none;
+      gap: 10px;
+    }
+
+    .ct-headline {
+      font-family: var(--font-retro);
+      font-size: clamp(.55rem, 2.5vw, .85rem);
+      line-height: 1.9;
+      text-shadow: inherit;
+    }
+    .ct-sub {
+      font-family: var(--font-mono); font-size: clamp(.6rem, 2vw, .78rem);
+      letter-spacing: .15em; opacity: .6;
+    }
+    .ct-big {
+      font-family: var(--font-title); font-weight: 900;
+      font-size: clamp(2rem, 7vw, 3.5rem); line-height: 1;
+    }
+    .ct-unit {
+      font-family: var(--font-mono); font-size: .72rem;
+      letter-spacing: .2em; opacity: .7;
+    }
+    .ct-rating {
+      font-family: var(--font-mono); font-size: .72rem;
+      letter-spacing: .18em; padding: 5px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid currentColor;
+      margin-top: 4px;
+    }
+
+    /* Color themes per state */
+    .theme-cyan   { color: var(--neon-cyan);   text-shadow: var(--text-glow-cyan);   }
+    .theme-pink   { color: var(--neon-pink);   text-shadow: var(--text-glow-pink);   }
+    .theme-purple { color: var(--neon-purple); text-shadow: var(--text-glow-purple); }
+    .theme-yellow { color: var(--neon-yellow); text-shadow: var(--glow-yellow);      }
+    .theme-white  { color: var(--text-primary); text-shadow: 0 0 8px rgba(255,255,255,.3); }
+
+    /* Fade transitions on center text children */
+    #center-text > * {
+      animation: fadeSlideUp .3s var(--ease-smooth) both;
+    }
+    #center-text > *:nth-child(2) { animation-delay: .06s; }
+    #center-text > *:nth-child(3) { animation-delay: .12s; }
+    #center-text > *:nth-child(4) { animation-delay: .18s; }
+
+    /* ── Countdown ring (waiting state) ────────────────────────── */
+    #countdown-ring {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #countdown-ring svg { position: absolute; width: 100%; height: 100%; }
+    #ring-track { stroke: rgba(180,0,255,.08); }
+    #ring-fill  {
+      stroke: rgba(180,0,255,.35);
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      transition: stroke-dashoffset linear, stroke .3s;
+    }
+
+    /* ── History bar ───────────────────────────────────────────── */
+    #history-bar {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 14px;
+      min-height: 36px;
+      animation: fadeSlideDown .7s .25s var(--ease-smooth) both;
+    }
+    .hist-chip {
+      font-family: var(--font-mono); font-size: .62rem;
+      letter-spacing: .1em; padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(0,245,255,.3);
+      color: var(--neon-cyan);
+      background: rgba(0,245,255,.05);
+      animation: scaleIn .25s var(--ease-snap) both;
+    }
+    .hist-chip.best-chip {
+      border-color: rgba(180,0,255,.5);
+      color: var(--neon-purple);
+      background: rgba(180,0,255,.06);
+      box-shadow: var(--glow-purple);
+    }
+
+    /* ── Controls row ──────────────────────────────────────────── */
+    #controls {
+      display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap;
+      justify-content: center;
+      animation: fadeSlideDown .7s .3s var(--ease-smooth) both;
+    }
+
+    /* ── Click ripple ──────────────────────────────────────────── */
+    .ripple {
+      position: absolute; border-radius: 50%;
+      width: 10px; height: 10px;
+      transform: translate(-50%, -50%) scale(0);
+      pointer-events: none;
+      animation: rippleOut .5s var(--ease-out) forwards;
+    }
+    @keyframes rippleOut {
+      to { transform: translate(-50%, -50%) scale(14); opacity: 0; }
+    }
+
+    /* ── Summary overlay ───────────────────────────────────────── */
+    #summary-overlay {
+      position: fixed; inset: 0;
+      background: rgba(2,2,10,.9);
+      backdrop-filter: blur(12px);
+      z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      opacity: 0; pointer-events: none;
+      transition: opacity .5s ease;
+    }
+    #summary-overlay.visible { opacity: 1; pointer-events: auto; }
+
+    .summary-panel {
+      background: rgba(6,6,20,.97);
+      border: 1px solid var(--neon-pink);
+      border-radius: var(--radius-lg);
+      padding: clamp(24px,5vw,48px) clamp(20px,5vw,56px);
+      max-width: 500px; width: 100%;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(255,0,110,.2), 0 0 100px rgba(255,0,110,.06);
+      transform: scale(.88) translateY(28px);
+      transition: transform .5s .08s var(--ease-snap);
+    }
+    #summary-overlay.visible .summary-panel { transform: scale(1) translateY(0); }
+
+    .summary-icon { font-size: 3rem; margin-bottom: 12px; display: block;
+      animation: floatIcon 2.4s ease-in-out infinite alternate; }
+    .summary-title {
+      font-family: var(--font-retro); font-size: clamp(.7rem,2.5vw,.9rem);
+      color: var(--neon-pink); text-shadow: var(--text-glow-pink);
+      line-height: 1.9; margin-bottom: 8px;
+    }
+    .summary-sub {
+      font-family: var(--font-mono); font-size: .68rem; letter-spacing: .15em;
+      color: var(--text-muted); margin-bottom: 24px;
+    }
+
+    .summary-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+      margin-bottom: 28px;
+    }
+    .s-stat {
+      background: rgba(255,0,110,.04);
+      border: 1px solid rgba(255,0,110,.18);
+      border-radius: var(--radius-sm); padding: 12px 6px;
+    }
+    .s-stat .lbl { font-family: var(--font-mono); font-size: .5rem; letter-spacing: .18em; color: var(--text-muted); margin-bottom: 6px; }
+    .s-stat .val { font-family: var(--font-title); font-weight: 700; font-size: 1.1rem; color: var(--neon-cyan); text-shadow: var(--text-glow-cyan); }
+    .s-stat .val.pink  { color: var(--neon-pink);   text-shadow: var(--text-glow-pink);   }
+    .s-stat .val.purple{ color: var(--neon-purple); text-shadow: var(--text-glow-purple); }
+
+    .results-list {
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+      margin-bottom: 24px;
+    }
+    .res-pill {
+      font-family: var(--font-mono); font-size: .65rem;
+      padding: 5px 12px; border-radius: var(--radius-pill);
+      border: 1px solid rgba(0,245,255,.3);
+      color: var(--neon-cyan); background: rgba(0,245,255,.05);
+    }
+    .res-pill.best-pill {
+      border-color: rgba(180,0,255,.5); color: var(--neon-purple);
+      background: rgba(180,0,255,.07); box-shadow: var(--glow-purple);
+    }
+
+    .summary-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Transition overlay ─────────────────────────────────────── */
+    #transition-overlay {
+      position: fixed; inset: 0; background: var(--bg-deep);
+      z-index: 10000; pointer-events: none; opacity: 0;
+      transition: opacity .3s ease;
+    }
+
+    /* ── Game-specific keyframes ────────────────────────────────── */
+    @keyframes targetPulse {
+      from { box-shadow: 0 0 28px rgba(255,0,110,.55), 0 0 60px rgba(255,0,110,.2); }
+      to   { box-shadow: 0 0 50px rgba(255,0,110,.8),  0 0 90px rgba(255,0,110,.35); }
+    }
+    @keyframes floatIcon {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-10px); }
+    }
+    @keyframes tooSoonShake {
+      0%,100% { transform: translateX(0); }
+      15%      { transform: translateX(-10px); }
+      30%      { transform: translateX(10px); }
+      45%      { transform: translateX(-8px); }
+      60%      { transform: translateX(8px); }
+      75%      { transform: translateX(-4px); }
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 520px) {
+      body { cursor: auto; }
+      #cursor { display: none; }
+      #target { width: 90px; height: 90px; }
+      .ct-big { font-size: clamp(1.8rem, 9vw, 2.8rem); }
+      .summary-grid { grid-template-columns: repeat(3,1fr); gap: 6px; }
+      .s-stat .val { font-size: .9rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="cursor"></div>
+
+  <!-- Parallax background -->
+  <div class="parallax-scene">
+    <div class="parallax-layer layer-far"  id="layerFar"></div>
+    <div class="parallax-layer layer-near" id="layerNear"></div>
+    <div class="parallax-floor"></div>
+    <div class="parallax-shapes" id="parallaxShapes"></div>
+  </div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div id="transition-overlay"></div>
+
+  <!-- ── Summary overlay ──────────────────────────────────────── -->
+  <div id="summary-overlay" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+    <div class="summary-panel">
+      <span class="summary-icon" id="summary-icon">⚡</span>
+      <h2 class="summary-title" id="summary-title">NEURAL SCAN<br>COMPLETE</h2>
+      <p class="summary-sub" id="summary-sub">REACTION ANALYSIS — 5 TRIALS</p>
+      <div class="summary-grid">
+        <div class="s-stat">
+          <div class="lbl">AVERAGE</div>
+          <div class="val" id="s-avg">—</div>
+        </div>
+        <div class="s-stat">
+          <div class="lbl">BEST</div>
+          <div class="val purple" id="s-best">—</div>
+        </div>
+        <div class="s-stat">
+          <div class="lbl">WORST</div>
+          <div class="val pink" id="s-worst">—</div>
+        </div>
+      </div>
+      <div class="results-list" id="s-results"></div>
+      <p class="summary-sub" id="s-rating-line" style="margin-bottom:20px"></p>
+      <div class="summary-actions">
+        <button class="neon-button neon-button--lg neon-button--pink" id="btn-play-again">▶ RETRY</button>
+        <button class="neon-button" id="btn-hub-sum">⌂ HUB</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main page ─────────────────────────────────────────────── -->
+  <div id="page">
+
+    <nav class="game-nav">
+      <button class="back-btn" id="btn-back">← HUB</button>
+    </nav>
+
+    <header class="page-header">
+      <p class="game-eyebrow">// NEURAL RESPONSE TEST //</p>
+      <h1 class="game-title">REACTION TEST</h1>
+
+      <div class="hud-strip" role="status" aria-live="polite">
+        <div class="hud-cell">
+          <div class="hud-cell-label">LAST</div>
+          <div class="hud-cell-value" id="hud-last">—</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-cell-label">AVG×5</div>
+          <div class="hud-cell-value pink" id="hud-avg">—</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-cell-label">BEST</div>
+          <div class="hud-cell-value purple" id="hud-best">—</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-cell-label">TRIAL</div>
+          <div class="hud-cell-value" id="hud-trial">—</div>
+        </div>
+      </div>
+
+      <!-- Progress dots for current game -->
+      <div class="trial-dots" id="trial-dots" aria-label="Trial progress"></div>
+    </header>
+
+    <!-- Arena -->
+    <div id="arena-wrap">
+      <div id="arena" class="state-ready" role="button"
+           tabindex="0" aria-label="Reaction target area">
+
+        <!-- SVG countdown ring -->
+        <div id="countdown-ring">
+          <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet">
+            <ellipse id="ring-track" cx="200" cy="120" rx="80" ry="80"
+              fill="none" stroke-width="3"/>
+            <ellipse id="ring-fill"  cx="200" cy="120" rx="80" ry="80"
+              fill="none" stroke-width="3" stroke-linecap="round"
+              transform="rotate(-90 200 120)"/>
+          </svg>
+        </div>
+
+        <!-- Clickable target -->
+        <div id="target" class="shape-circle idle">
+          <span class="target-icon" id="target-icon">⚡</span>
+        </div>
+
+        <!-- Instruction / result text -->
+        <div id="center-text"></div>
+
+      </div><!-- /#arena -->
+
+      <!-- Per-trial history chips -->
+      <div id="history-bar" aria-live="polite"></div>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls">
+      <button class="neon-button neon-button--pink neon-button--lg" id="btn-start">▶ START</button>
+      <button class="neon-button neon-button--sm" id="btn-settings" aria-expanded="false">⚙ CONFIG</button>
+    </div>
+
+    <!-- Config panel (inline toggle) -->
+    <div id="config-panel" style="display:none; margin-top:14px; animation: fadeSlideUp .3s var(--ease-smooth) both;">
+      <div class="neon-card" style="max-width:400px; margin:0 auto; padding:18px 20px; text-align:center;">
+        <p style="font-family:var(--font-mono); font-size:.6rem; letter-spacing:.2em; color:var(--text-muted); margin-bottom:14px;">CONFIGURE GAME</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="font-family:var(--font-mono); font-size:.58rem; letter-spacing:.12em; color:var(--text-muted); display:block; margin-bottom:6px;">TRIALS</label>
+            <select id="cfg-trials" style="width:100%; background:rgba(0,245,255,.04); border:1px solid rgba(0,245,255,.25); border-radius:6px; color:var(--neon-cyan); font-family:var(--font-mono); font-size:.72rem; padding:7px 10px; cursor:pointer; outline:none;">
+              <option value="3">3</option>
+              <option value="5" selected>5</option>
+              <option value="8">8</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-family:var(--font-mono); font-size:.58rem; letter-spacing:.12em; color:var(--text-muted); display:block; margin-bottom:6px;">SHAPES</label>
+            <select id="cfg-shapes" style="width:100%; background:rgba(0,245,255,.04); border:1px solid rgba(0,245,255,.25); border-radius:6px; color:var(--neon-cyan); font-family:var(--font-mono); font-size:.72rem; padding:7px 10px; cursor:pointer; outline:none;">
+              <option value="all" selected>ALL</option>
+              <option value="circle">CIRCLE</option>
+              <option value="square">SQUARE</option>
+              <option value="diamond">DIAMOND</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="font-family:var(--font-mono); font-size:.58rem; letter-spacing:.12em; color:var(--text-muted); display:block; margin-bottom:6px;">MIN DELAY (ms)</label>
+            <input id="cfg-min" type="number" min="300" max="2000" step="100" value="1000"
+              style="width:100%; background:rgba(0,245,255,.04); border:1px solid rgba(0,245,255,.25); border-radius:6px; color:var(--neon-cyan); font-family:var(--font-mono); font-size:.72rem; padding:7px 10px; outline:none;">
+          </div>
+          <div>
+            <label style="font-family:var(--font-mono); font-size:.58rem; letter-spacing:.12em; color:var(--text-muted); display:block; margin-bottom:6px;">MAX DELAY (ms)</label>
+            <input id="cfg-max" type="number" min="500" max="5000" step="100" value="3000"
+              style="width:100%; background:rgba(0,245,255,.04); border:1px solid rgba(0,245,255,.25); border-radius:6px; color:var(--neon-cyan); font-family:var(--font-mono); font-size:.72rem; padding:7px 10px; outline:none;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#page -->
+
+  <script src="../games.js"></script>
+  <script>
+    /* ════════════════════════════════════════════════════════════
+       ENVIRONMENT VARIABLES
+       Edit these to change game defaults.
+       ════════════════════════════════════════════════════════════ */
+
+    /** Minimum wait before target activates (ms) */
+    let DELAY_MIN = 1000;
+
+    /** Maximum wait before target activates (ms) */
+    let DELAY_MAX = 3000;
+
+    /** Number of trials per round before showing the summary */
+    let TRIALS_PER_GAME = 5;
+
+    /**
+     * Shape pool. Each trial randomly picks from this list.
+     * Valid values: 'circle', 'square', 'diamond'
+     */
+    let SHAPE_POOL = ['circle', 'square', 'diamond'];
+
+    /**
+     * Icon pool paired with shapes.
+     * One icon is randomly chosen each trial.
+     */
+    const ICON_POOL = ['⚡','★','✦','◈','⬡','▲','◆','●'];
+
+    /* ════════════════════════════════════════════════════════════
+       GAME STATE
+       ════════════════════════════════════════════════════════════ */
+    const GAME_NAME = 'reaction';
+
+    const STATE = {
+      IDLE:     'idle',      // not started
+      WAITING:  'waiting',   // counting down to target flash
+      GO:       'go',        // target is pink — waiting for click
+      TOO_SOON: 'toosoon',   // clicked before target turned
+      RESULT:   'result',    // showing last result
+    };
+
+    let state          = STATE.IDLE;
+    let trialResults   = [];   // ms times this game
+    let allTimeResults = [];   // last TRIALS_PER_GAME for display
+    let currentTrial   = 0;    // 0-indexed
+    let goTimestamp    = 0;    // performance.now() when target turned
+    let waitTimeout    = null;
+    let ringAnimId     = null;
+    let ringStart      = 0;
+    let ringDuration   = 0;
+
+    /* ════════════════════════════════════════════════════════════
+       DOM
+       ════════════════════════════════════════════════════════════ */
+    const arena        = document.getElementById('arena');
+    const target       = document.getElementById('target');
+    const targetIcon   = document.getElementById('target-icon');
+    const centerText   = document.getElementById('center-text');
+    const trialDots    = document.getElementById('trial-dots');
+    const historyBar   = document.getElementById('history-bar');
+    const hudLast      = document.getElementById('hud-last');
+    const hudAvg       = document.getElementById('hud-avg');
+    const hudBest      = document.getElementById('hud-best');
+    const hudTrial     = document.getElementById('hud-trial');
+    const ringFill     = document.getElementById('ring-fill');
+    const summaryEl    = document.getElementById('summary-overlay');
+    const cursor       = document.getElementById('cursor');
+
+    /* ════════════════════════════════════════════════════════════
+       CURSOR
+       ════════════════════════════════════════════════════════════ */
+    document.addEventListener('mousemove', e => {
+      if (!cursor) return;
+      cursor.style.left = e.clientX + 'px';
+      cursor.style.top  = e.clientY + 'px';
+    });
+    arena.addEventListener('mouseenter', () => cursor?.classList.add('crosshair'));
+    arena.addEventListener('mouseleave', () => cursor?.classList.remove('crosshair'));
+
+    /* ════════════════════════════════════════════════════════════
+       RING ANIMATION
+       ════════════════════════════════════════════════════════════ */
+    const RING_CIRC = 2 * Math.PI * 80; // circumference ≈ 502
+
+    function startRing(durationMs) {
+      ringStart    = performance.now();
+      ringDuration = durationMs;
+      ringFill.style.strokeDasharray  = String(RING_CIRC);
+      ringFill.style.strokeDashoffset = String(RING_CIRC);
+      ringFill.style.stroke = 'rgba(180,0,255,.5)';
+      ringFill.style.transition = 'none';
+
+      cancelAnimationFrame(ringAnimId);
+
+      function tick(now) {
+        const elapsed  = now - ringStart;
+        const progress = Math.min(elapsed / ringDuration, 1);
+        // Fill from 0 → full  (dashoffset counts down)
+        const offset = RING_CIRC * (1 - progress);
+        ringFill.style.strokeDashoffset = String(offset);
+        if (progress < 1) ringAnimId = requestAnimationFrame(tick);
+      }
+      ringAnimId = requestAnimationFrame(tick);
+    }
+
+    function stopRing(color) {
+      cancelAnimationFrame(ringAnimId);
+      ringFill.style.stroke = color || 'transparent';
+      ringFill.style.strokeDashoffset = color ? '0' : String(RING_CIRC);
+    }
+
+    function resetRing() {
+      cancelAnimationFrame(ringAnimId);
+      ringFill.style.strokeDashoffset = String(RING_CIRC);
+      ringFill.style.stroke = 'rgba(180,0,255,.2)';
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       TRIAL DOTS
+       ════════════════════════════════════════════════════════════ */
+    function buildDots() {
+      trialDots.innerHTML = '';
+      for (let i = 0; i < TRIALS_PER_GAME; i++) {
+        const d = document.createElement('div');
+        d.className = 'trial-dot';
+        d.id = `dot-${i}`;
+        trialDots.appendChild(d);
+      }
+    }
+
+    function updateDots() {
+      for (let i = 0; i < TRIALS_PER_GAME; i++) {
+        const d = document.getElementById(`dot-${i}`);
+        if (!d) continue;
+        d.className = 'trial-dot';
+        if (i < trialResults.length) {
+          // Find if it's the best result
+          const isBest = trialResults[i] === Math.min(...trialResults);
+          d.classList.add(isBest && trialResults.length > 1 ? 'best' : 'done');
+        } else if (i === trialResults.length) {
+          d.classList.add('active');
+        }
+      }
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       HISTORY BAR
+       ════════════════════════════════════════════════════════════ */
+    function addHistoryChip(ms) {
+      const best = trialResults.length > 0 ? Math.min(...trialResults) : Infinity;
+      const isBest = ms === best && trialResults.length > 1;
+
+      const chip = document.createElement('div');
+      chip.className = `hist-chip${isBest ? ' best-chip' : ''}`;
+      chip.textContent = `${ms}ms${isBest ? ' ★' : ''}`;
+      historyBar.appendChild(chip);
+    }
+
+    function rebuildHistory() {
+      historyBar.innerHTML = '';
+      const best = trialResults.length > 0 ? Math.min(...trialResults) : Infinity;
+      trialResults.forEach((ms, i) => {
+        const chip = document.createElement('div');
+        chip.className = `hist-chip${ms === best && trialResults.length > 1 ? ' best-chip' : ''}`;
+        chip.textContent = `${ms}ms${ms === best && trialResults.length > 1 ? ' ★' : ''}`;
+        historyBar.appendChild(chip);
+      });
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       HUD
+       ════════════════════════════════════════════════════════════ */
+    function refreshHud() {
+      const best = getHighScore(GAME_NAME);
+      hudBest.textContent = best > 0 ? `${best}ms` : '—';
+      hudTrial.textContent = `${trialResults.length}/${TRIALS_PER_GAME}`;
+
+      if (trialResults.length > 0) {
+        hudLast.textContent = `${trialResults[trialResults.length - 1]}ms`;
+        hudLast.classList.remove('pop'); void hudLast.offsetWidth; hudLast.classList.add('pop');
+      }
+
+      if (trialResults.length >= 2) {
+        const avg = Math.round(trialResults.reduce((a, b) => a + b, 0) / trialResults.length);
+        hudAvg.textContent = `${avg}ms`;
+        hudAvg.classList.remove('pop'); void hudAvg.offsetWidth; hudAvg.classList.add('pop');
+      }
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       CENTER TEXT HELPER
+       ════════════════════════════════════════════════════════════ */
+    function setCenterText(nodes) {
+      centerText.innerHTML = '';
+      nodes.forEach(({ tag = 'p', cls = '', text }) => {
+        const el = document.createElement(tag);
+        el.className = cls;
+        el.textContent = text;
+        centerText.appendChild(el);
+      });
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       SHAPE HELPERS
+       ════════════════════════════════════════════════════════════ */
+    function pickShape() {
+      if (SHAPE_POOL.length === 1) return SHAPE_POOL[0];
+      return randomFrom(SHAPE_POOL);
+    }
+
+    function applyShape(shape) {
+      target.classList.remove('shape-circle', 'shape-square', 'shape-diamond');
+      target.classList.add(`shape-${shape}`);
+      targetIcon.textContent = randomFrom(ICON_POOL);
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       RATING
+       ════════════════════════════════════════════════════════════ */
+    function getRating(ms) {
+      if (ms < 180) return { label: 'SUPERHUMAN',   color: 'theme-purple' };
+      if (ms < 230) return { label: 'ELITE REFLEX',  color: 'theme-cyan'   };
+      if (ms < 280) return { label: 'SHARP',         color: 'theme-cyan'   };
+      if (ms < 350) return { label: 'AVERAGE',       color: 'theme-white'  };
+      if (ms < 450) return { label: 'SLUGGISH',      color: 'theme-yellow' };
+      return               { label: 'DELAYED',       color: 'theme-pink'   };
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       SPAWN CLICK RIPPLE
+       ════════════════════════════════════════════════════════════ */
+    function spawnRipple(e, color) {
+      const rect = arena.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const rip = document.createElement('div');
+      rip.className = 'ripple';
+      rip.style.cssText = `left:${x}px; top:${y}px;
+        background: radial-gradient(circle, ${color}22 0%, ${color}00 70%);
+        border: 1px solid ${color}44;`;
+      arena.appendChild(rip);
+      rip.addEventListener('animationend', () => rip.remove());
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       GAME FLOW
+       ════════════════════════════════════════════════════════════ */
+    function startGame() {
+      trialResults = [];
+      currentTrial = 0;
+      historyBar.innerHTML = '';
+      buildDots();
+      updateDots();
+      refreshHud();
+      beginTrial();
+    }
+
+    function beginTrial() {
+      state = STATE.WAITING;
+      arena.className = 'state-waiting';
+
+      const delay = randomInt(DELAY_MIN, DELAY_MAX);
+
+      // Show idle target with shape
+      const shape = pickShape();
+      applyShape(shape);
+      target.className = `shape-${shape} idle`;
+      target.classList.add('visible');
+
+      setCenterText([
+        { cls: 'ct-sub theme-purple', text: `TRIAL ${currentTrial + 1} OF ${TRIALS_PER_GAME}` },
+        { cls: 'ct-headline theme-purple', text: 'WAIT FOR PINK…' },
+      ]);
+
+      // Animate the ring to show wait time
+      startRing(delay);
+
+      waitTimeout = setTimeout(activateTarget, delay);
+    }
+
+    function activateTarget() {
+      state = STATE.GO;
+      goTimestamp = performance.now();
+      arena.className = 'state-go';
+      stopRing('var(--neon-pink)');
+
+      target.classList.remove('idle');
+      target.classList.add('go');
+      centerText.innerHTML = '';  // clear text so target is focal point
+
+      playSound('beep');
+      flashScreen('pink', 120);
+    }
+
+    function handleClick(e) {
+      if (state === STATE.IDLE) return;
+
+      if (state === STATE.WAITING) {
+        onTooSoon(e);
+        return;
+      }
+
+      if (state === STATE.GO) {
+        const reactionMs = Math.round(performance.now() - goTimestamp);
+        onGoodClick(e, reactionMs);
+        return;
+      }
+
+      // Click during result / toosoon — advance
+      if (state === STATE.RESULT || state === STATE.TOO_SOON) {
+        if (currentTrial < TRIALS_PER_GAME) {
+          beginTrial();
+        }
+      }
+    }
+
+    function onTooSoon(e) {
+      clearTimeout(waitTimeout);
+      cancelAnimationFrame(ringAnimId);
+      state = STATE.TOO_SOON;
+      arena.className = 'state-toosoon';
+
+      spawnRipple(e, '#ffe600');
+      target.classList.remove('idle', 'go', 'visible');
+      playSound('miss');
+      resetRing();
+      flashScreen('pink', 200);
+
+      // Shake arena
+      arena.style.animation = 'tooSoonShake .4s ease';
+      arena.addEventListener('animationend', () => { arena.style.animation = ''; }, { once: true });
+
+      setCenterText([
+        { cls: 'ct-headline theme-yellow', text: 'TOO SOON!' },
+        { cls: 'ct-sub theme-yellow', text: 'WAIT FOR THE TARGET TO TURN PINK' },
+        { cls: 'ct-sub', text: 'CLICK ANYWHERE TO RETRY' },
+      ]);
+
+      showToast('⚡ Too soon! Wait for pink.', { variant: 'pink', sound: '' });
+    }
+
+    function onGoodClick(e, ms) {
+      state = STATE.RESULT;
+      arena.className = 'state-result';
+      stopRing('var(--neon-cyan)');
+
+      spawnRipple(e, '#00f5ff');
+      target.classList.remove('go');
+      target.classList.add('idle');
+
+      trialResults.push(ms);
+      currentTrial++;
+
+      const rating = getRating(ms);
+
+      // Check high score
+      const prev = getHighScore(GAME_NAME);
+      // For reaction: lower is better — store inverted (1000000 - ms) so saveHighScore works
+      const scoreVal = Math.max(0, 100000 - ms);
+      const result = saveHighScore(GAME_NAME, scoreVal);
+
+      const isNewBest = prev === 0 || ms < prev || (result.saved && ms < prev);
+
+      if (isNewBest) {
+        saveGameData(GAME_NAME, 'bestMs', ms);
+      }
+
+      playSound(ms < 250 ? 'score' : 'flip');
+      updateDots();
+      refreshHud();
+      addHistoryChip(ms);
+
+      const isFinalTrial = currentTrial >= TRIALS_PER_GAME;
+
+      setCenterText([
+        { cls: `ct-big ${ms < 250 ? 'theme-cyan' : 'theme-white'}`, text: `${ms}` },
+        { cls: 'ct-unit theme-white', text: 'MILLISECONDS' },
+        { cls: `ct-rating ${rating.color}`, text: rating.label },
+        { cls: 'ct-sub', text: isFinalTrial ? 'GAME COMPLETE' : `CLICK TO CONTINUE` },
+      ]);
+
+      if (isNewBest) {
+        showToast(`★ NEW BEST: ${ms}ms`, { variant: 'purple', sound: 'highScore' });
+      }
+
+      if (isFinalTrial) {
+        setTimeout(showSummary, 1200);
+      }
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       SUMMARY
+       ════════════════════════════════════════════════════════════ */
+    function showSummary() {
+      const avg   = Math.round(trialResults.reduce((a, b) => a + b, 0) / trialResults.length);
+      const best  = Math.min(...trialResults);
+      const worst = Math.max(...trialResults);
+      const rating = getRating(avg);
+
+      document.getElementById('s-avg').textContent   = `${avg}ms`;
+      document.getElementById('s-best').textContent  = `${best}ms`;
+      document.getElementById('s-worst').textContent = `${worst}ms`;
+
+      const ratingLine = document.getElementById('s-rating-line');
+      ratingLine.className = `summary-sub ${rating.color}`;
+      ratingLine.textContent = `NEURAL RATING: ${rating.label}`;
+
+      // Result pills
+      const resContainer = document.getElementById('s-results');
+      resContainer.innerHTML = '';
+      trialResults.forEach((ms, i) => {
+        const pill = document.createElement('div');
+        pill.className = `res-pill${ms === best ? ' best-pill' : ''}`;
+        pill.textContent = `T${i + 1}: ${ms}ms${ms === best ? ' ★' : ''}`;
+        resContainer.appendChild(pill);
+      });
+
+      // Emoji based on rating
+      const icons = { SUPERHUMAN: '🧠', 'ELITE REFLEX': '⚡', SHARP: '✦', AVERAGE: '👾', SLUGGISH: '🌀', DELAYED: '💀' };
+      document.getElementById('summary-icon').textContent = icons[rating.label] || '⚡';
+      document.getElementById('summary-sub').textContent = `REACTION ANALYSIS — ${TRIALS_PER_GAME} TRIALS`;
+
+      summaryEl.classList.add('visible');
+      playSound('win');
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       IDLE STATE
+       ════════════════════════════════════════════════════════════ */
+    function setIdle() {
+      state = STATE.IDLE;
+      clearTimeout(waitTimeout);
+      cancelAnimationFrame(ringAnimId);
+      arena.className = 'state-ready';
+      target.className = 'shape-circle idle visible';
+      targetIcon.textContent = '⚡';
+      resetRing();
+
+      setCenterText([
+        { cls: 'ct-headline theme-cyan', text: 'READY?' },
+        { cls: 'ct-sub', text: 'WHEN THE TARGET TURNS PINK — CLICK!' },
+        { cls: 'ct-sub theme-purple', text: 'PRESS START TO BEGIN' },
+      ]);
+
+      hudTrial.textContent = `0/${TRIALS_PER_GAME}`;
+      hudLast.textContent  = '—';
+      hudAvg.textContent   = '—';
+      refreshHud();
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       CONFIG PANEL
+       ════════════════════════════════════════════════════════════ */
+    function applyConfig() {
+      const minVal = parseInt(document.getElementById('cfg-min').value, 10);
+      const maxVal = parseInt(document.getElementById('cfg-max').value, 10);
+      const trialsVal = parseInt(document.getElementById('cfg-trials').value, 10);
+      const shapesVal = document.getElementById('cfg-shapes').value;
+
+      DELAY_MIN = Math.max(300, Math.min(minVal, 2000));
+      DELAY_MAX = Math.max(DELAY_MIN + 200, Math.min(maxVal, 5000));
+      TRIALS_PER_GAME = trialsVal;
+      SHAPE_POOL = shapesVal === 'all' ? ['circle', 'square', 'diamond'] : [shapesVal];
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       EVENT WIRING
+       ════════════════════════════════════════════════════════════ */
+    arena.addEventListener('click', e => {
+      e.stopPropagation();
+      handleClick(e);
+    });
+    arena.addEventListener('touchstart', e => {
+      e.preventDefault();
+      handleClick({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+    }, { passive: false });
+    arena.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleClick({ clientX: arena.getBoundingClientRect().left + arena.offsetWidth / 2,
+                      clientY: arena.getBoundingClientRect().top  + arena.offsetHeight / 2 });
+      }
+    });
+
+    document.getElementById('btn-start').addEventListener('click', () => {
+      playSound('start');
+      summaryEl.classList.remove('visible');
+      applyConfig();
+      buildDots();
+      startGame();
+    });
+
+    document.getElementById('btn-play-again').addEventListener('click', () => {
+      playSound('start');
+      summaryEl.classList.remove('visible');
+      startGame();
+    });
+
+    document.getElementById('btn-hub-sum').addEventListener('click', () => {
+      playSound('back'); navigateTo('../index.html');
+    });
+    document.getElementById('btn-back').addEventListener('click', () => {
+      playSound('back'); navigateTo('../index.html');
+    });
+
+    document.getElementById('btn-settings').addEventListener('click', () => {
+      const panel = document.getElementById('config-panel');
+      const isHidden = panel.style.display === 'none';
+      panel.style.display = isHidden ? 'block' : 'none';
+      document.getElementById('btn-settings').setAttribute('aria-expanded', isHidden);
+      playSound('click');
+    });
+
+    // Keyboard shortcut R = restart
+    document.addEventListener('keydown', e => {
+      if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !['INPUT','SELECT'].includes(e.target.tagName)) {
+        playSound('start');
+        summaryEl.classList.remove('visible');
+        startGame();
+      }
+      if (e.key === 'Escape') summaryEl.classList.remove('visible');
+    });
+
+    /* ════════════════════════════════════════════════════════════
+       BOOT
+       ════════════════════════════════════════════════════════════ */
+    document.addEventListener('DOMContentLoaded', () => {
+      setIdle();
+      buildDots();
+      refreshHud();
+    });
+  </script>
+</body>
+</html>

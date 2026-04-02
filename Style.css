@@ -1,0 +1,1021 @@
+/* ============================================================
+   NEON ARCADE — style.css
+   Global retro-neon theme shared across all game pages.
+
+   HOW TO CUSTOMIZE COLORS:
+     Edit the CSS custom properties in :root below.
+     Every component references these variables, so one
+     change ripples through the entire UI instantly.
+
+   HOW TO ADJUST PARALLAX SPEED:
+     Find the section marked "PARALLAX SPEED KNOBS" and
+     change the --parallax-far / --parallax-near multipliers.
+     Higher values = faster movement per scroll/mouse pixel.
+   ============================================================ */
+
+/* ─── GOOGLE FONT ────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap');
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  1. CSS CUSTOM PROPERTIES (Design Tokens)                   ║
+   ╚══════════════════════════════════════════════════════════════╝
+   Change any value here to retheme the entire arcade.           */
+
+:root {
+
+  /* ── Core neon palette ─────────────────────────────────────── */
+  --neon-cyan:        #00f5ff;   /* primary accent  — change to any hue */
+  --neon-pink:        #ff006e;   /* secondary accent */
+  --neon-purple:      #b400ff;   /* tertiary accent  */
+  --neon-yellow:      #ffe600;   /* extra accent     */
+  --neon-green:       #00ff88;   /* success / bonus  */
+
+  /* ── Background palette ────────────────────────────────────── */
+  --bg:               #050508;   /* main page background */
+  --bg-deep:          #02020a;   /* darkest shade (behind grid) */
+  --bg-card:          rgba(10, 10, 25, 0.88);
+  --bg-overlay:       rgba(2,  2, 10, 0.72);
+
+  /* ── Text ──────────────────────────────────────────────────── */
+  --text-primary:     #e8eaf6;
+  --text-muted:       rgba(232, 234, 246, 0.45);
+  --text-accent:      var(--neon-cyan);
+
+  /* ── Grid overlay ──────────────────────────────────────────── */
+  --grid-color:       rgba(0, 245, 255, 0.07);  /* grid line tint */
+  --grid-size-far:    80px;                      /* coarse grid cell */
+  --grid-size-near:   40px;                      /* fine grid cell   */
+
+  /* ── Border / surface ──────────────────────────────────────── */
+  --border-subtle:    rgba(0, 245, 255, 0.20);
+  --border-glow:      rgba(0, 245, 255, 0.55);
+
+  /* ── Glow shadows (re-used as shorthand) ───────────────────── */
+  --glow-cyan:        0 0 6px var(--neon-cyan),  0 0 18px rgba(0, 245, 255, 0.40);
+  --glow-pink:        0 0 6px var(--neon-pink),  0 0 18px rgba(255, 0, 110,  0.40);
+  --glow-purple:      0 0 6px var(--neon-purple), 0 0 18px rgba(180, 0, 255, 0.40);
+  --glow-yellow:      0 0 6px var(--neon-yellow), 0 0 18px rgba(255, 230, 0, 0.40);
+
+  /* ── Neon text shadow presets ──────────────────────────────── */
+  --text-glow-cyan:
+    0 0 5px  var(--neon-cyan),
+    0 0 10px var(--neon-cyan),
+    0 0 20px rgba(0, 245, 255, 0.55);
+  --text-glow-pink:
+    0 0 5px  var(--neon-pink),
+    0 0 10px var(--neon-pink),
+    0 0 20px rgba(255, 0, 110, 0.55);
+  --text-glow-purple:
+    0 0 5px  var(--neon-purple),
+    0 0 10px var(--neon-purple),
+    0 0 20px rgba(180, 0, 255, 0.55);
+
+  /* ── Typography ────────────────────────────────────────────── */
+  --font-retro:       'Press Start 2P', monospace;   /* pixel / retro headings */
+  --font-title:       'Orbitron', monospace;         /* sleek sci-fi titles    */
+  --font-mono:        'Share Tech Mono', monospace;  /* HUD / stats / labels   */
+  --font-body:        'Exo 2', sans-serif;           /* body copy / cards      */
+
+  /* ── Spacing scale ─────────────────────────────────────────── */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  32px;
+  --space-xl:  64px;
+
+  /* ── Border radius ─────────────────────────────────────────── */
+  --radius-sm:  6px;
+  --radius-md:  12px;
+  --radius-lg:  20px;
+  --radius-pill:100px;
+
+  /* ── Transitions ───────────────────────────────────────────── */
+  --ease-snap:    cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth:  cubic-bezier(0.16, 1, 0.30, 1);
+  --ease-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast:   180ms;
+  --duration-base:   320ms;
+  --duration-slow:   600ms;
+
+  /* ── Z-index layers ────────────────────────────────────────── */
+  --z-bg:       0;
+  --z-scene:    1;
+  --z-overlay:  2;
+  --z-content:  10;
+  --z-modal:    100;
+  --z-toast:    200;
+  --z-cursor:   9999;
+
+  /* ──────────────────────────────────────────────────────────── */
+  /* PARALLAX SPEED KNOBS                                         */
+  /* Increase a value to make that layer move faster on scroll /  */
+  /* mousemove. Decrease it (or set to 0) to make it static.     */
+  /* ──────────────────────────────────────────────────────────── */
+  --parallax-far-scroll:    0.40;   /* far grid scroll multiplier   */
+  --parallax-near-scroll:   0.70;   /* near grid scroll multiplier  */
+  --parallax-far-mouse:     18px;   /* far grid mouse travel (px)   */
+  --parallax-near-mouse:    32px;   /* near grid mouse travel (px)  */
+  --parallax-shape-mouse:   20px;   /* shape layer mouse travel (px)*/
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  2. GLOBAL RESET                                            ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin:  0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  color:            var(--text-primary);
+  font-family:      var(--font-body);
+  font-size:        16px;
+  line-height:      1.6;
+  min-height:       100vh;
+  overflow-x:       hidden;
+  /* Grid overlay sits on the body as the base layer */
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-size-near) var(--grid-size-near);
+}
+
+img, svg, video, canvas {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--neon-cyan);
+  text-decoration: none;
+  transition: color var(--duration-fast) ease,
+              text-shadow var(--duration-fast) ease;
+}
+a:hover {
+  color:       var(--neon-pink);
+  text-shadow: var(--text-glow-pink);
+}
+
+ul, ol { list-style: none; }
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size:   inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Remove default focus outline; a custom one is added below */
+:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 3px;
+  border-radius:  var(--radius-sm);
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  3. SCROLLBAR                                               ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+::-webkit-scrollbar             { width: 6px; height: 6px; }
+::-webkit-scrollbar-track       { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb       { background: var(--neon-purple); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neon-cyan); }
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  4. TYPOGRAPHY                                              ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+/* Retro pixel headings — use sparingly for impact */
+.text-retro {
+  font-family: var(--font-retro);
+  line-height: 1.6;  /* Press Start 2P needs extra leading */
+}
+
+/* Sci-fi title headings */
+.text-title {
+  font-family: var(--font-title);
+  font-weight: 900;
+  letter-spacing: .05em;
+}
+
+/* Monospace HUD labels */
+.text-mono {
+  font-family: var(--font-mono);
+  letter-spacing: .1em;
+}
+
+/* ── Neon glow text helpers ─────────────────────────────────── */
+.neon-text-cyan   { color: var(--neon-cyan);   text-shadow: var(--text-glow-cyan);   }
+.neon-text-pink   { color: var(--neon-pink);   text-shadow: var(--text-glow-pink);   }
+.neon-text-purple { color: var(--neon-purple); text-shadow: var(--text-glow-purple); }
+.neon-text-yellow { color: var(--neon-yellow); text-shadow: var(--glow-yellow); }
+
+/* Gradient text (for hero logos) */
+.neon-text-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--neon-cyan)   0%,
+    var(--neon-purple) 50%,
+    var(--neon-pink)   100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 22px rgba(0, 245, 255, 0.45));
+}
+
+/* Subtle default body glow */
+.neon-text-soft {
+  text-shadow: 0 0 12px rgba(232, 234, 246, 0.2);
+}
+
+/* Heading scale */
+h1 { font-size: clamp(1.8rem,  5vw, 3.5rem); font-family: var(--font-title); font-weight: 900; }
+h2 { font-size: clamp(1.3rem, 3.5vw, 2.2rem); font-family: var(--font-title); font-weight: 700; }
+h3 { font-size: clamp(1rem,   2.5vw, 1.5rem); font-family: var(--font-title); font-weight: 700; }
+h4 { font-size: 1rem;  font-family: var(--font-mono); }
+h5 { font-size: .85rem; font-family: var(--font-mono); }
+
+p { max-width: 65ch; }
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  5. PARALLAX BACKGROUND                                     ║
+   ║                                                             ║
+   ║  Usage (HTML):                                              ║
+   ║  <div class="parallax-scene">                              ║
+   ║    <div class="parallax-layer layer-far"></div>            ║
+   ║    <div class="parallax-layer layer-near"></div>           ║
+   ║    <div class="parallax-floor"></div>                      ║
+   ║    <div class="parallax-shapes" id="shapes"></div>         ║
+   ║  </div>                                                     ║
+   ║                                                             ║
+   ║  Then initialize with initParallax() from games.js.        ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+.parallax-scene {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-bg);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Generic parallax layer */
+.parallax-layer {
+  position: absolute;
+  inset: -20%;           /* oversized to prevent edge gaps during motion */
+  will-change: transform;
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+}
+
+.layer-far {
+  background-size: var(--grid-size-far) var(--grid-size-far);
+  opacity: .65;
+  /* JS applies: transform: translate(mouseX * --parallax-far-mouse, mouseY * --parallax-far-mouse - scrollY * --parallax-far-scroll) */
+}
+.layer-near {
+  background-size: var(--grid-size-near) var(--grid-size-near);
+  opacity: .35;
+  /* JS applies: transform: translate(mouseX * --parallax-near-mouse, mouseY * --parallax-near-mouse - scrollY * --parallax-near-scroll) */
+}
+
+/* Perspective floor grid (pure CSS, no JS needed) */
+.parallax-floor {
+  position: absolute;
+  bottom: 0; left: -50%;
+  width:  200%;
+  height: 55%;
+  background-image:
+    linear-gradient(rgba(0, 245, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.07) 1px, transparent 1px);
+  background-size: 60px 60px;
+  transform:        perspective(600px) rotateX(60deg);
+  transform-origin: bottom center;
+  opacity: .50;
+}
+
+/* Container for floating SVG shapes (spawned by JS) */
+.parallax-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Individual floating shape */
+.parallax-shape {
+  position: absolute;
+  opacity: .15;
+  will-change: transform;
+  animation: shapeFloat var(--float-dur, 8s) var(--float-delay, 0s) ease-in-out infinite alternate;
+}
+
+/* ── Parallax BG helper for simple single-layer usage ────────── */
+/* Add .parallax-bg to any element to give it a moving grid */
+.parallax-bg {
+  position: relative;
+  isolation: isolate;
+}
+.parallax-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-size-near) var(--grid-size-near);
+  pointer-events: none;
+  z-index: -1;
+  transition: background-position .1s linear;
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  6. OVERLAY EFFECTS (scanlines + vignette)                  ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+/* Add <div class="scanlines"></div> and <div class="vignette"></div>
+   as the last children of <body> for CRT feel.                  */
+
+.scanlines {
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.07) 2px,
+    rgba(0, 0, 0, 0.07) 4px
+  );
+  pointer-events: none;
+  z-index: var(--z-overlay);
+}
+
+.vignette {
+  position: fixed; inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(0, 0, 0, 0.70) 100%
+  );
+  pointer-events: none;
+  z-index: var(--z-overlay);
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  7. GAME CONTAINER                                          ║
+   ║                                                             ║
+   ║  Wrap all in-game UI with .game-container.                  ║
+   ║  Use .game-container--narrow for reading-heavy screens.     ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+.game-container {
+  position:   relative;
+  z-index:    var(--z-content);
+  width:      100%;
+  max-width:  1200px;
+  margin:     0 auto;
+  padding:    var(--space-xl) var(--space-lg);
+  display:    flex;
+  flex-direction: column;
+  align-items: center;
+  gap:        var(--space-lg);
+}
+
+.game-container--narrow  { max-width:  720px; }
+.game-container--wide    { max-width: 1440px; }
+.game-container--full    { max-width: 100%;   }
+
+/* Centered play area */
+.game-canvas-wrap {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           100%;
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  8. NEON BUTTON                                             ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+.neon-button {
+  /* Layout */
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--space-sm);
+  padding:         12px 28px;
+
+  /* Typography */
+  font-family:     var(--font-mono);
+  font-size:       .8rem;
+  letter-spacing:  .18em;
+  text-transform:  uppercase;
+  color:           var(--neon-cyan);
+
+  /* Surface */
+  background:      transparent;
+  border:          1px solid var(--neon-cyan);
+  border-radius:   var(--radius-sm);
+  cursor:          pointer;
+
+  /* Glow */
+  box-shadow:
+    0 0 6px  rgba(0, 245, 255, 0.35),
+    inset 0 0 6px rgba(0, 245, 255, 0.08);
+  text-shadow: var(--text-glow-cyan);
+
+  /* Transition */
+  transition:
+    background      var(--duration-base) var(--ease-smooth),
+    color           var(--duration-base) var(--ease-smooth),
+    box-shadow      var(--duration-base) var(--ease-smooth),
+    border-color    var(--duration-base) var(--ease-smooth),
+    transform       var(--duration-fast) var(--ease-snap);
+
+  position:   relative;
+  overflow:   hidden;
+  user-select: none;
+}
+
+/* Sweep shimmer on hover */
+.neon-button::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 245, 255, 0.12),
+    transparent
+  );
+  transform: skewX(-20deg);
+  transition: left var(--duration-slow) var(--ease-out);
+}
+
+.neon-button:hover {
+  background:   rgba(0, 245, 255, 0.08);
+  border-color: var(--neon-cyan);
+  box-shadow:
+    0 0 12px rgba(0, 245, 255, 0.55),
+    0 0 28px rgba(0, 245, 255, 0.25),
+    inset 0 0 12px rgba(0, 245, 255, 0.10);
+  transform: translateY(-2px);
+}
+.neon-button:hover::before { left: 150%; }
+
+.neon-button:active {
+  transform: translateY(1px) scale(.98);
+  box-shadow: 0 0 6px rgba(0, 245, 255, 0.40);
+}
+
+/* ── Color variants ─────────────────────────────────────────── */
+.neon-button--pink {
+  color:        var(--neon-pink);
+  border-color: var(--neon-pink);
+  box-shadow:   0 0 6px rgba(255, 0, 110, 0.35), inset 0 0 6px rgba(255, 0, 110, 0.08);
+  text-shadow:  var(--text-glow-pink);
+}
+.neon-button--pink::before {
+  background: linear-gradient(90deg, transparent, rgba(255,0,110,.12), transparent);
+}
+.neon-button--pink:hover {
+  background:  rgba(255, 0, 110, 0.08);
+  border-color: var(--neon-pink);
+  box-shadow:  0 0 12px rgba(255,0,110,.55), 0 0 28px rgba(255,0,110,.25), inset 0 0 12px rgba(255,0,110,.10);
+}
+
+.neon-button--purple {
+  color:        var(--neon-purple);
+  border-color: var(--neon-purple);
+  box-shadow:   0 0 6px rgba(180,0,255,.35), inset 0 0 6px rgba(180,0,255,.08);
+  text-shadow:  var(--text-glow-purple);
+}
+.neon-button--purple::before {
+  background: linear-gradient(90deg, transparent, rgba(180,0,255,.12), transparent);
+}
+.neon-button--purple:hover {
+  background:   rgba(180, 0, 255, 0.08);
+  border-color: var(--neon-purple);
+  box-shadow:   0 0 12px rgba(180,0,255,.55), 0 0 28px rgba(180,0,255,.25), inset 0 0 12px rgba(180,0,255,.10);
+}
+
+.neon-button--yellow {
+  color:        var(--neon-yellow);
+  border-color: var(--neon-yellow);
+  box-shadow:   0 0 6px rgba(255,230,0,.35), inset 0 0 6px rgba(255,230,0,.08);
+  text-shadow:  var(--glow-yellow);
+}
+.neon-button--yellow:hover {
+  background:   rgba(255, 230, 0, 0.08);
+  border-color: var(--neon-yellow);
+  box-shadow:   0 0 12px rgba(255,230,0,.55), 0 0 28px rgba(255,230,0,.25);
+}
+
+/* ── Size variants ──────────────────────────────────────────── */
+.neon-button--sm  { padding: 8px 18px;  font-size: .7rem;  }
+.neon-button--lg  { padding: 16px 40px; font-size: .9rem;  letter-spacing: .22em; }
+.neon-button--xl  { padding: 20px 52px; font-size: 1rem;   letter-spacing: .25em; }
+.neon-button--full { width: 100%; }
+
+/* ── Icon-only button ───────────────────────────────────────── */
+.neon-button--icon {
+  padding: 10px;
+  width: 42px; height: 42px;
+  border-radius: var(--radius-md);
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  9. NEON CARD                                               ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+.neon-card {
+  background:       var(--bg-card);
+  border:           1px solid var(--border-subtle);
+  border-radius:    var(--radius-md);
+  padding:          var(--space-lg);
+  backdrop-filter:  blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition:
+    border-color var(--duration-base) ease,
+    box-shadow   var(--duration-base) ease,
+    transform    var(--duration-base) var(--ease-snap);
+  position: relative;
+  overflow: hidden;
+}
+
+.neon-card:hover {
+  border-color: var(--neon-cyan);
+  box-shadow:
+    0 0 16px rgba(0, 245, 255, 0.25),
+    0 0 48px rgba(0, 245, 255, 0.08);
+  transform: translateY(-4px);
+}
+
+.neon-card--pink:hover   { border-color: var(--neon-pink);   box-shadow: 0 0 16px rgba(255,0,110,.25), 0 0 48px rgba(255,0,110,.08); }
+.neon-card--purple:hover { border-color: var(--neon-purple); box-shadow: 0 0 16px rgba(180,0,255,.25), 0 0 48px rgba(180,0,255,.08); }
+.neon-card--yellow:hover { border-color: var(--neon-yellow); box-shadow: 0 0 16px rgba(255,230,0,.25), 0 0 48px rgba(255,230,0,.08); }
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  10. HUD / SCORE PANEL                                      ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+.hud {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--space-lg);
+  flex-wrap:       wrap;
+  justify-content: center;
+  width:           100%;
+}
+
+.hud-stat {
+  text-align: center;
+  min-width:  80px;
+}
+
+.hud-label {
+  font-family:    var(--font-mono);
+  font-size:      .6rem;
+  letter-spacing: .2em;
+  color:          var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom:  4px;
+}
+
+.hud-value {
+  font-family:  var(--font-title);
+  font-size:    clamp(1.4rem, 4vw, 2rem);
+  font-weight:  700;
+  color:        var(--neon-cyan);
+  text-shadow:  var(--text-glow-cyan);
+  line-height:  1;
+}
+
+.hud-divider {
+  width:      1px;
+  height:     40px;
+  background: linear-gradient(to bottom, transparent, var(--neon-cyan), transparent);
+  opacity:    .4;
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  11. GAME CANVAS STYLES                                     ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+canvas.game-canvas {
+  display:       block;
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 0 0 1px rgba(0, 245, 255, 0.08),
+    0 0 30px rgba(0, 245, 255, 0.12),
+    0 0 80px rgba(0, 245, 255, 0.05);
+  background:    var(--bg-deep);
+  max-width:     100%;
+  cursor:        crosshair;
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  12. MODAL / OVERLAY PANEL                                  ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+.modal-backdrop {
+  position:   fixed; inset: 0;
+  background: rgba(2, 2, 10, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index:    var(--z-modal);
+  display:    flex;
+  align-items:     center;
+  justify-content: center;
+  padding:    var(--space-md);
+  opacity:    0;
+  pointer-events: none;
+  transition: opacity var(--duration-base) ease;
+}
+.modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-panel {
+  background:    var(--bg-card);
+  border:        1px solid var(--border-glow);
+  border-radius: var(--radius-lg);
+  padding:       var(--space-xl) var(--space-lg);
+  max-width:     480px;
+  width:         100%;
+  box-shadow:    0 0 40px rgba(0,245,255,.2), 0 0 100px rgba(0,245,255,.06);
+  text-align:    center;
+  transform:     scale(.9) translateY(20px);
+  transition:    transform var(--duration-base) var(--ease-snap);
+}
+.modal-backdrop.is-open .modal-panel {
+  transform: scale(1) translateY(0);
+}
+
+.modal-title {
+  font-family:  var(--font-retro);
+  font-size:    clamp(.9rem, 3vw, 1.2rem);
+  color:        var(--neon-cyan);
+  text-shadow:  var(--text-glow-cyan);
+  margin-bottom: var(--space-md);
+  line-height:  1.8;
+}
+
+.modal-actions {
+  display:  flex;
+  gap:      var(--space-md);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-lg);
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  13. TOAST NOTIFICATIONS                                    ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+.toast-container {
+  position:  fixed;
+  bottom:    var(--space-lg);
+  right:     var(--space-lg);
+  z-index:   var(--z-toast);
+  display:   flex;
+  flex-direction: column;
+  gap:       var(--space-sm);
+  pointer-events: none;
+}
+
+.toast {
+  font-family:   var(--font-mono);
+  font-size:     .72rem;
+  letter-spacing: .1em;
+  padding:       10px 18px;
+  border-radius: var(--radius-sm);
+  border:        1px solid var(--neon-cyan);
+  background:    var(--bg-card);
+  color:         var(--neon-cyan);
+  box-shadow:    var(--glow-cyan);
+  text-shadow:   var(--text-glow-cyan);
+  animation:     toastIn .4s var(--ease-snap) both,
+                 toastOut .3s var(--ease-smooth) 2.5s both;
+  pointer-events: auto;
+}
+.toast--pink   { color: var(--neon-pink);   border-color: var(--neon-pink);   box-shadow: var(--glow-pink);   text-shadow: var(--text-glow-pink);   }
+.toast--purple { color: var(--neon-purple); border-color: var(--neon-purple); box-shadow: var(--glow-purple); text-shadow: var(--text-glow-purple); }
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  14. NAVIGATION / BACK BUTTON                               ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+.game-nav {
+  position:  fixed;
+  top:       var(--space-md);
+  left:      var(--space-md);
+  z-index:   var(--z-content);
+  display:   flex;
+  gap:       var(--space-sm);
+  align-items: center;
+}
+
+.back-btn {
+  display:      inline-flex;
+  align-items:  center;
+  gap:          8px;
+  font-family:  var(--font-mono);
+  font-size:    .68rem;
+  letter-spacing: .15em;
+  color:        var(--text-muted);
+  padding:      8px 14px;
+  border:       1px solid rgba(255,255,255,.1);
+  border-radius: var(--radius-sm);
+  background:   var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  transition:   color var(--duration-fast) ease,
+                border-color var(--duration-fast) ease,
+                box-shadow var(--duration-fast) ease;
+}
+.back-btn:hover {
+  color:        var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow:   var(--glow-cyan);
+  text-shadow:  var(--text-glow-cyan);
+}
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  15. PROGRESS / HEALTH BARS                                 ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+.progress-bar {
+  width:         100%;
+  height:        8px;
+  background:    rgba(255,255,255,.07);
+  border-radius: var(--radius-pill);
+  overflow:      hidden;
+  border:        1px solid rgba(255,255,255,.06);
+}
+
+.progress-fill {
+  height:        100%;
+  border-radius: var(--radius-pill);
+  background:    var(--neon-cyan);
+  box-shadow:    0 0 8px var(--neon-cyan);
+  transition:    width .3s var(--ease-smooth);
+}
+.progress-fill--pink   { background: var(--neon-pink);   box-shadow: 0 0 8px var(--neon-pink);   }
+.progress-fill--purple { background: var(--neon-purple); box-shadow: 0 0 8px var(--neon-purple); }
+.progress-fill--yellow { background: var(--neon-yellow); box-shadow: 0 0 8px var(--neon-yellow); }
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  16. UTILITY CLASSES                                        ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+/* Flex helpers */
+.flex         { display: flex; }
+.flex-col     { display: flex; flex-direction: column; }
+.flex-center  { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-wrap    { flex-wrap: wrap; }
+.gap-sm       { gap: var(--space-sm); }
+.gap-md       { gap: var(--space-md); }
+.gap-lg       { gap: var(--space-lg); }
+
+/* Grid helpers */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-md); }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); }
+.grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-md); }
+
+/* Spacing */
+.mt-sm { margin-top: var(--space-sm); } .mb-sm { margin-bottom: var(--space-sm); }
+.mt-md { margin-top: var(--space-md); } .mb-md { margin-bottom: var(--space-md); }
+.mt-lg { margin-top: var(--space-lg); } .mb-lg { margin-bottom: var(--space-lg); }
+.mt-xl { margin-top: var(--space-xl); } .mb-xl { margin-bottom: var(--space-xl); }
+
+/* Text */
+.text-center { text-align: center; }
+.text-left   { text-align: left;   }
+.text-right  { text-align: right;  }
+.text-muted  { color: var(--text-muted); }
+.text-sm     { font-size: .85rem; }
+.text-xs     { font-size: .72rem; }
+.uppercase   { text-transform: uppercase; letter-spacing: .12em; }
+
+/* Visibility */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+.hidden { display: none !important; }
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  17. KEYFRAME ANIMATIONS                                    ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+/* Page intro */
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-24px); }
+  to   { opacity: 1; transform: translateY(0);      }
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.85); }
+  to   { opacity: 1; transform: scale(1);   }
+}
+
+/* Floating shapes */
+@keyframes shapeFloat {
+  0%   { transform: translateY(0)     rotate(0deg);   }
+  100% { transform: translateY(-28px) rotate(180deg); }
+}
+
+/* Neon pulse on icons / borders */
+@keyframes neonPulse {
+  0%, 100% { opacity: 1;   box-shadow: var(--glow-cyan); }
+  50%       { opacity: .65; box-shadow: none;             }
+}
+@keyframes neonPulsePink {
+  0%, 100% { opacity: 1;   box-shadow: var(--glow-pink); }
+  50%       { opacity: .65; box-shadow: none;             }
+}
+
+/* Diamond / dot blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Score pop */
+@keyframes scorePop {
+  0%   { transform: scale(1);    }
+  30%  { transform: scale(1.35); }
+  100% { transform: scale(1);    }
+}
+
+/* Glitch text effect */
+@keyframes glitch {
+  0%   { clip-path: inset(0 0 95% 0); transform: translate(-2px, 0); }
+  20%  { clip-path: inset(30% 0 50% 0); transform: translate(2px, 0); }
+  40%  { clip-path: inset(60% 0 20% 0); transform: translate(-1px, 0); }
+  60%  { clip-path: inset(80% 0 5%  0); transform: translate(1px, 0); }
+  80%  { clip-path: inset(10% 0 80% 0); transform: translate(0, 0); }
+  100% { clip-path: inset(0 0 0 0);    transform: translate(0, 0); }
+}
+
+/* Toast in/out */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0);    }
+  to   { opacity: 0; transform: translateX(30px); }
+}
+
+/* Spin (for loading states) */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Animation helper classes ─────────────────────────────── */
+.anim-fade-down   { animation: fadeSlideDown var(--duration-slow) var(--ease-smooth) both; }
+.anim-fade-up     { animation: fadeSlideUp   var(--duration-slow) var(--ease-smooth) both; }
+.anim-fade-in     { animation: fadeIn        var(--duration-slow) var(--ease-smooth) both; }
+.anim-scale-in    { animation: scaleIn       var(--duration-slow) var(--ease-snap)   both; }
+.anim-neon-pulse  { animation: neonPulse 2.4s ease-in-out infinite; }
+.anim-blink       { animation: blink     1s  step-end  infinite; }
+.anim-spin        { animation: spin      .8s linear     infinite; }
+.anim-score-pop   { animation: scorePop .35s var(--ease-snap); }
+
+/* Staggered child delays (apply to parent, children auto-stagger) */
+.stagger > *:nth-child(1) { animation-delay:  .05s }
+.stagger > *:nth-child(2) { animation-delay:  .10s }
+.stagger > *:nth-child(3) { animation-delay:  .15s }
+.stagger > *:nth-child(4) { animation-delay:  .20s }
+.stagger > *:nth-child(5) { animation-delay:  .25s }
+.stagger > *:nth-child(6) { animation-delay:  .30s }
+.stagger > *:nth-child(7) { animation-delay:  .35s }
+.stagger > *:nth-child(8) { animation-delay:  .40s }
+
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  18. RESPONSIVE BREAKPOINTS                                 ║
+   ╚══════════════════════════════════════════════════════════════╝
+   Breakpoints:
+     --bp-sm : 480px   (large phones)
+     --bp-md : 768px   (tablets)
+     --bp-lg : 1024px  (small laptops)
+     --bp-xl : 1280px  (desktops)
+   ============================================================ */
+
+/* ── Tablet and below ── */
+@media (max-width: 768px) {
+  :root {
+    --space-xl: 40px;
+    --space-lg: 24px;
+  }
+
+  .game-container {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .hud { gap: var(--space-md); }
+  .hud-divider { display: none; }
+
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modal-panel {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .toast-container {
+    bottom: var(--space-md);
+    right:  var(--space-md);
+    left:   var(--space-md);
+  }
+  .toast {
+    text-align: center;
+  }
+}
+
+/* ── Phone ── */
+@media (max-width: 480px) {
+  :root {
+    --space-xl: 28px;
+    --space-lg: 18px;
+    --space-md: 12px;
+  }
+
+  body {
+    /* Coarser grid on small screens for readability */
+    --grid-size-near: 30px;
+  }
+
+  h1 { font-size: clamp(1.4rem, 8vw, 2rem); }
+
+  .game-container { padding: var(--space-lg) var(--space-sm); }
+
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .neon-button { padding: 10px 20px; font-size: .72rem; }
+  .neon-button--lg { padding: 12px 28px; font-size: .8rem; }
+
+  .hud-value { font-size: 1.4rem; }
+
+  /* Hide parallax shapes on very small screens for perf */
+  .parallax-shapes { display: none; }
+}
+
+/* ── Reduced motion preference ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:   0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:  0.01ms !important;
+  }
+}

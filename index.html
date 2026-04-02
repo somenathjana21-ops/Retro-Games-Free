@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEON ARCADE — Game Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel = "icon" href = "">
+
+  <style>
+    /* ─── CSS VARIABLES ─────────────────────────────────────────── */
+    :root { 
+      --bg:          #050508;
+      --bg-deep:     #02020a;
+      --cyan:        #00f5ff;
+      --pink:        #ff006e;
+      --purple:      #b400ff;
+      --yellow:      #ffe600;
+      --white:       #e8eaf6;
+      --grid-color:  rgba(0, 245, 255, 0.07);
+      --card-bg:     rgba(10, 10, 25, 0.85);
+      --card-border: rgba(0, 245, 255, 0.25);
+      --font-title:  'Orbitron', monospace;
+      --font-mono:   'Share Tech Mono', monospace;
+      --font-body:   'Exo 2', sans-serif;
+      --glow-cyan:   0 0 8px var(--cyan), 0 0 20px rgba(0,245,255,0.4);
+      --glow-pink:   0 0 8px var(--pink), 0 0 20px rgba(255,0,110,0.4);
+      --glow-purple: 0 0 8px var(--purple), 0 0 20px rgba(180,0,255,0.4);
+    }
+
+    /* ─── RESET & BASE ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* ─── CUSTOM CURSOR ─────────────────────────────────────────── */
+    #cursor {
+      position: fixed;
+      width: 18px; height: 18px;
+      border: 2px solid var(--cyan);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width .2s, height .2s, background .2s, border-color .2s;
+      box-shadow: var(--glow-cyan);
+      mix-blend-mode: screen;
+    }
+    #cursor.hover {
+      width: 40px; height: 40px;
+      background: rgba(0,245,255,0.1);
+      border-color: var(--pink);
+      box-shadow: var(--glow-pink);
+    }
+    #cursor-trail {
+      position: fixed;
+      width: 6px; height: 6px;
+      background: var(--purple);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: left .12s ease, top .12s ease;
+      box-shadow: var(--glow-purple);
+      mix-blend-mode: screen;
+    }
+
+    /* ─── PARALLAX SCENE ────────────────────────────────────────── */
+    #scene {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* Grid layers */
+    .grid-layer {
+      position: absolute;
+      inset: -20%;
+      background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+      will-change: transform;
+    }
+    .grid-layer.grid-far  { background-size: 80px 80px;  opacity: .6; }
+    .grid-layer.grid-near { background-size: 40px 40px;  opacity: .35; }
+
+    /* Perspective floor grid */
+    .floor-grid {
+      position: absolute;
+      bottom: 0; left: -50%;
+      width: 200%; height: 55%;
+      background-image:
+        linear-gradient(rgba(0,245,255,0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,255,0.08) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform: perspective(600px) rotateX(60deg);
+      transform-origin: bottom center;
+      opacity: .5;
+    }
+
+    /* Floating shapes */
+    .shape {
+      position: absolute;
+      opacity: .18;
+      will-change: transform;
+    }
+    .shape svg { display: block; }
+
+    /* Scanlines */
+    .scanlines {
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Vignette */
+    .vignette {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ─── PAGE WRAPPER ──────────────────────────────────────────── */
+    #page {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+    }
+
+    /* ─── HEADER ────────────────────────────────────────────────── */
+    header {
+      text-align: center;
+      padding: 80px 20px 50px;
+      animation: fadeSlideDown .9s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .header-eyebrow {
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      letter-spacing: .35em;
+      color: var(--cyan);
+      text-shadow: var(--glow-cyan);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      opacity: .8;
+    }
+
+    .logo {
+      font-family: var(--font-title);
+      font-weight: 900;
+      font-size: clamp(2.8rem, 8vw, 6rem);
+      line-height: 1;
+      letter-spacing: .05em;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 50%, var(--pink) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 30px rgba(0,245,255,0.5));
+      position: relative;
+      display: inline-block;
+    }
+    .logo::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 50%, var(--pink) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: blur(16px) opacity(.45);
+      z-index: -1;
+    }
+
+    .tagline {
+      font-family: var(--font-mono);
+      font-size: clamp(.75rem, 2vw, .95rem);
+      color: var(--white);
+      opacity: .55;
+      margin-top: 18px;
+      letter-spacing: .2em;
+    }
+
+    /* Decorative separator */
+    .sep {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin: 36px auto 0;
+      max-width: 340px;
+    }
+    .sep-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      box-shadow: 0 0 6px var(--cyan);
+    }
+    .sep-diamond {
+      width: 8px; height: 8px;
+      background: var(--cyan);
+      transform: rotate(45deg);
+      box-shadow: var(--glow-cyan);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    /* Stat bar */
+    .stat-bar {
+      display: flex;
+      justify-content: center;
+      gap: clamp(20px, 4vw, 60px);
+      margin-top: 40px;
+      flex-wrap: wrap;
+      animation: fadeSlideDown 1s .2s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-num {
+      font-family: var(--font-title);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--cyan);
+      text-shadow: var(--glow-cyan);
+    }
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      letter-spacing: .2em;
+      color: var(--white);
+      opacity: .45;
+      margin-top: 4px;
+    }
+
+    /* ─── SECTION LABEL ─────────────────────────────────────────── */
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      letter-spacing: .3em;
+      color: var(--pink);
+      text-shadow: var(--glow-pink);
+      text-align: center;
+      margin-bottom: 32px;
+      opacity: .9;
+      animation: fadeSlideDown 1s .4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    /* ─── GAME GRID ─────────────────────────────────────────────── */
+    #games-section {
+      padding: 20px 24px 80px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    #game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 24px;
+    }
+
+    /* ─── GAME CARD ─────────────────────────────────────────────── */
+    .game-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 28px 24px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: transform .35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  box-shadow .35s ease,
+                  border-color .35s ease;
+      animation: cardReveal .6s cubic-bezier(0.16, 1, 0.3, 1) both;
+      text-decoration: none;
+      display: block;
+      color: inherit;
+    }
+
+    /* Staggered reveal delays */
+    .game-card:nth-child(1)  { animation-delay: .05s }
+    .game-card:nth-child(2)  { animation-delay: .10s }
+    .game-card:nth-child(3)  { animation-delay: .15s }
+    .game-card:nth-child(4)  { animation-delay: .20s }
+    .game-card:nth-child(5)  { animation-delay: .25s }
+    .game-card:nth-child(6)  { animation-delay: .30s }
+    .game-card:nth-child(7)  { animation-delay: .35s }
+    .game-card:nth-child(8)  { animation-delay: .40s }
+    .game-card:nth-child(9)  { animation-delay: .45s }
+    .game-card:nth-child(10) { animation-delay: .50s }
+    .game-card:nth-child(11) { animation-delay: .55s }
+    .game-card:nth-child(12) { animation-delay: .60s }
+
+    /* Neon glow corners */
+    .game-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: linear-gradient(135deg,
+        rgba(0,245,255,0.04) 0%,
+        transparent 50%,
+        rgba(180,0,255,0.04) 100%);
+      opacity: 0;
+      transition: opacity .35s ease;
+    }
+    .game-card::after {
+      content: '';
+      position: absolute;
+      top: -60%; left: -60%;
+      width: 80%; height: 80%;
+      background: radial-gradient(circle, rgba(0,245,255,0.12) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity .5s ease, top .5s ease, left .5s ease;
+      pointer-events: none;
+      border-radius: 50%;
+    }
+
+    .game-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      border-color: var(--cyan);
+      box-shadow:
+        0 0 20px rgba(0,245,255,0.3),
+        0 0 60px rgba(0,245,255,0.1),
+        inset 0 0 30px rgba(0,245,255,0.04);
+    }
+    .game-card:hover::before { opacity: 1; }
+    .game-card:hover::after  { opacity: 1; }
+
+    /* Color variants */
+    .game-card[data-color="pink"]:hover {
+      border-color: var(--pink);
+      box-shadow: 0 0 20px rgba(255,0,110,0.3), 0 0 60px rgba(255,0,110,0.1);
+    }
+    .game-card[data-color="pink"]::after {
+      background: radial-gradient(circle, rgba(255,0,110,0.12) 0%, transparent 70%);
+    }
+    .game-card[data-color="purple"]:hover {
+      border-color: var(--purple);
+      box-shadow: 0 0 20px rgba(180,0,255,0.3), 0 0 60px rgba(180,0,255,0.1);
+    }
+    .game-card[data-color="purple"]::after {
+      background: radial-gradient(circle, rgba(180,0,255,0.12) 0%, transparent 70%);
+    }
+    .game-card[data-color="yellow"]:hover {
+      border-color: var(--yellow);
+      box-shadow: 0 0 20px rgba(255,230,0,0.3), 0 0 60px rgba(255,230,0,0.1);
+    }
+    .game-card[data-color="yellow"]::after {
+      background: radial-gradient(circle, rgba(255,230,0,0.12) 0%, transparent 70%);
+    }
+
+    /* Card top badge */
+    .card-badge {
+      position: absolute;
+      top: 14px; right: 14px;
+      font-family: var(--font-mono);
+      font-size: .6rem;
+      letter-spacing: .15em;
+      padding: 3px 8px;
+      border-radius: 100px;
+      border: 1px solid currentColor;
+      opacity: .6;
+    }
+    .badge-new   { color: var(--cyan);   border-color: rgba(0,245,255,.5); }
+    .badge-hot   { color: var(--pink);   border-color: rgba(255,0,110,.5); }
+    .badge-epic  { color: var(--purple); border-color: rgba(180,0,255,.5); }
+
+    /* Icon */
+    .card-icon-wrap {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.7rem;
+      margin-bottom: 18px;
+      position: relative;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .card-icon-wrap::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 18px;
+      background: inherit;
+      filter: blur(10px);
+      opacity: .35;
+      z-index: -1;
+    }
+    .icon-cyan   { border-color: rgba(0,245,255,.3);   box-shadow: 0 0 14px rgba(0,245,255,.2);   }
+    .icon-pink   { border-color: rgba(255,0,110,.3);   box-shadow: 0 0 14px rgba(255,0,110,.2);   }
+    .icon-purple { border-color: rgba(180,0,255,.3);   box-shadow: 0 0 14px rgba(180,0,255,.2);   }
+    .icon-yellow { border-color: rgba(255,230,0,.3);   box-shadow: 0 0 14px rgba(255,230,0,.2);   }
+
+    /* Card text */
+    .card-title {
+      font-family: var(--font-title);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px rgba(232,234,246,0.3);
+    }
+    .card-desc {
+      font-size: .82rem;
+      line-height: 1.55;
+      opacity: .55;
+      font-family: var(--font-body);
+      font-weight: 300;
+    }
+
+    /* Arrow */
+    .card-arrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 18px;
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      letter-spacing: .12em;
+      opacity: 0;
+      transform: translateX(-6px);
+      transition: opacity .3s ease, transform .3s ease;
+    }
+    .card-arrow .fa-arrow-right { font-size: .65rem; }
+    .game-card:hover .card-arrow {
+      opacity: .8;
+      transform: translateX(0);
+    }
+    [data-color="cyan"] .card-arrow    { color: var(--cyan);   }
+    [data-color="pink"] .card-arrow    { color: var(--pink);   }
+    [data-color="purple"] .card-arrow  { color: var(--purple); }
+    [data-color="yellow"] .card-arrow  { color: var(--yellow); }
+
+    /* Divider line inside card */
+    .card-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+      margin: 14px 0 10px;
+    }
+
+    /* ─── FOOTER ────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 30px 20px 50px;
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      letter-spacing: .15em;
+      color: var(--white);
+      opacity: .25;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ─── PAGE TRANSITION OVERLAY ───────────────────────────────── */
+    #transition-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg-deep);
+      z-index: 10000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s ease;
+    }
+    #transition-overlay.flash {
+      opacity: 1;
+    }
+
+    /* ─── ANIMATIONS ────────────────────────────────────────────── */
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cardReveal {
+      from { opacity: 0; transform: translateY(30px) scale(.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: rotate(45deg) scale(1);   opacity: 1; }
+      50%       { transform: rotate(45deg) scale(1.5); opacity: .6; }
+    }
+    @keyframes floatShape {
+      0%, 100% { transform: translateY(0)   rotate(0deg); }
+      50%       { transform: translateY(-30px) rotate(180deg); }
+    }
+    @keyframes glitchTitle {
+      0%   { clip-path: inset(0 0 100% 0); }
+      100% { clip-path: inset(0 0 0 0); }
+    }
+
+    /* ─── SCROLLBAR ─────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-deep); }
+    ::-webkit-scrollbar-thumb { background: var(--purple); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+
+    /* ─── RESPONSIVE ────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      header { padding: 60px 16px 36px; }
+      #game-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+      .game-card { padding: 20px 16px; }
+      .card-icon-wrap { width: 46px; height: 46px; font-size: 1.4rem; }
+      .card-title { font-size: .88rem; }
+      body { cursor: auto; }
+      #cursor, #cursor-trail { display: none; }
+    }
+    @media (max-width: 380px) {
+      #game-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Custom cursor -->
+  <div id="cursor"></div>
+  <div id="cursor-trail"></div>
+
+  <!-- Parallax scene -->
+  <div id="scene">
+    <div class="grid-layer grid-far"  id="gridFar"></div>
+    <div class="grid-layer grid-near" id="gridNear"></div>
+    <div class="floor-grid"></div>
+    <div id="shapes-container"></div>
+  </div>
+
+  <!-- Overlays -->
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <!-- Page transition overlay -->
+  <div id="transition-overlay"></div>
+
+  <!-- ─── PAGE CONTENT ──────────────────────────────────────────── -->
+  <div id="page">
+    <header>
+      <p class="header-eyebrow">// INSERT COIN TO CONTINUE //</p>
+      <h1 class="logo" data-text="NEON ARCADE">NEON ARCADE</h1>
+      <p class="tagline">SELECT YOUR GAME &nbsp;·&nbsp; LEVEL UP &nbsp;·&nbsp; DOMINATE</p>
+      <div class="sep">
+        <div class="sep-line"></div>
+        <div class="sep-diamond"></div>
+        <div class="sep-line"></div>
+      </div>
+      <div class="stat-bar">
+        <div class="stat">
+          <div class="stat-num" id="game-count">12</div>
+          <div class="stat-label">GAMES</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">∞</div>
+          <div class="stat-label">HOURS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">100%</div>
+          <div class="stat-label">FREE</div>
+        </div>
+      </div>
+    </header>
+
+    <section id="games-section">
+      <p class="section-label">— CHOOSE YOUR DESTINY —</p>
+      <div id="game-grid"></div>
+    </section>
+
+    <footer>
+      &copy; <span id="year"></span> &nbsp;/&nbsp; NEON ARCADE &nbsp;/&nbsp; ALL SYSTEMS NOMINAL
+    </footer>
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════════════
+       GAME_LIST  — edit this array to add / remove games
+       ═══════════════════════════════════════════════════════════════ */
+    const GAME_LIST = [
+      {
+        id: 'memory',
+        title: 'Memory Match',
+        icon: '🧠',
+        description: 'Flip cards to find matching pairs. Race the clock before your neurons short-circuit.',
+        url: 'games/memory.html',
+        color: 'cyan',
+        badge: 'NEW',
+      },
+      {
+        id: 'snake',
+        title: 'Neon Snake',
+        icon: '🐍',
+        description: 'Guide your luminous serpent through the grid. Don\'t bite your own tail — or the walls.',
+        url: 'games/snake.html',
+        color: 'pink',
+        badge: 'HOT',
+      },
+      {
+        id: 'tetris',
+        title: 'Tetris Blitz',
+        icon: '🟦',
+        description: 'Stack glowing tetrominoes at warp speed. Clear lines before the stack hits the ceiling.',
+        url: 'games/tetris.html',
+        color: 'purple',
+        badge: 'EPIC',
+      },
+      {
+        id: 'breakout',
+        title: 'Laser Breakout',
+        icon: '🏓',
+        description: 'Smash neon bricks with a plasma paddle. Unleash power-ups hidden inside the matrix.',
+        url: 'games/breakout.html',
+        color: 'cyan',
+        badge: null,
+      },
+      {
+        id: 'pong',
+        title: 'Cyber Pong',
+        icon: '🏸',
+        description: 'The classic paddle duel, reborn in neon. Challenge the AI or pass the keyboard to a friend.',
+        url: 'games/pong.html',
+        color: 'yellow',
+        badge: null,
+      },
+      {
+        id: 'asteroids',
+        title: 'Void Blaster',
+        icon: '🚀',
+        description: 'Navigate deep space debris fields. Fire thrusters, dodge rocks, survive the void.',
+        url: 'games/asteroids.html',
+        color: 'pink',
+        badge: 'HOT',
+      },
+      {
+        id: 'wordle',
+        title: 'Pixel Words',
+        icon: '🔤',
+        description: 'Guess the hidden five-letter word in six tries. Each guess illuminates the path.',
+        url: 'games/wordle.html',
+        color: 'purple',
+        badge: null,
+      },
+      {
+        id: 'minesweeper',
+        title: 'Mine Matrix',
+        icon: '💣',
+        description: 'Clear the minefield without triggering a chain reaction. Logical precision required.',
+        url: 'games/minesweeper.html',
+        color: 'yellow',
+        badge: null,
+      },
+      {
+        id: 'platformer',
+        title: 'Pixel Runner',
+        icon: '🕹️',
+        description: 'Sprint and leap through procedurally generated neon platforms. One hit and it\'s game over.',
+        url: 'games/platformer.html',
+        color: 'cyan',
+        badge: 'NEW',
+      },
+      {
+        id: 'quiz',
+        title: 'Trivia Surge',
+        icon: '⚡',
+        description: 'Answer rapid-fire questions across science, history, and pop culture. Streak bonuses await.',
+        url: 'games/quiz.html',
+        color: 'pink',
+        badge: null,
+      },
+      {
+        id: '2048',
+        title: '2048 Fusion',
+        icon: '🔢',
+        description: 'Merge numbered tiles in a glowing grid. Reach 2048 without running out of moves.',
+        url: 'games/2048.html',
+        color: 'purple',
+        badge: 'NEW',
+      },
+      {
+        id: 'flappy',
+        title: 'Flappy Drone',
+        icon: '🤖',
+        description: 'Pilot a rogue drone between laser barriers. Tap to thrust, pray to survive.',
+        url: 'games/flappy.html',
+        color: 'yellow',
+        badge: 'HOT',
+      },
+    ];
+
+    /* ═══════════════════════════════════════════════════════════════
+       BUILD GAME GRID
+       ═══════════════════════════════════════════════════════════════ */
+    const grid = document.getElementById('game-grid');
+    document.getElementById('game-count').textContent = GAME_LIST.length;
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const badgeClass = { NEW: 'badge-new', HOT: 'badge-hot', EPIC: 'badge-epic' };
+
+    GAME_LIST.forEach(game => {
+      const card = document.createElement('a');
+      card.href = game.url;
+      card.className = 'game-card';
+      card.dataset.color = game.color || 'cyan';
+      card.setAttribute('aria-label', `Play ${game.title}`);
+
+      const badge = game.badge
+        ? `<span class="card-badge ${badgeClass[game.badge] || 'badge-new'}">${game.badge}</span>`
+        : '';
+
+      card.innerHTML = `
+        ${badge}
+        <div class="card-icon-wrap icon-${game.color || 'cyan'}">${game.icon}</div>
+        <div class="card-title">${game.title}</div>
+        <div class="card-divider"></div>
+        <div class="card-desc">${game.description}</div>
+        <div class="card-arrow">PLAY NOW <i class="fa-solid fa-arrow-right"></i></div>
+      `;
+
+      /* Mouse-follow glow inside card */
+      card.addEventListener('mousemove', e => {
+        const r = card.getBoundingClientRect();
+        const x = ((e.clientX - r.left) / r.width  * 100).toFixed(1);
+        const y = ((e.clientY - r.top)  / r.height * 100).toFixed(1);
+        card.style.setProperty('--mx', x + '%');
+        card.style.setProperty('--my', y + '%');
+        const after = card.querySelector(':scope::after');
+        card.style.cssText += `--gx:${x}%;--gy:${y}%;`;
+      });
+
+      /* Page transition on click */
+      card.addEventListener('click', e => {
+        e.preventDefault();
+        const overlay = document.getElementById('transition-overlay');
+        overlay.classList.add('flash');
+        setTimeout(() => { window.location.href = game.url; }, 280);
+      });
+
+      grid.appendChild(card);
+    });
+
+    /* ═══════════════════════════════════════════════════════════════
+       PARALLAX — MOUSEMOVE + SCROLL
+       ═══════════════════════════════════════════════════════════════ */
+    const gridFar  = document.getElementById('gridFar');
+    const gridNear = document.getElementById('gridNear');
+
+    let mx = 0, my = 0, tx = 0, ty = 0;
+    let raf = null;
+
+    document.addEventListener('mousemove', e => {
+      mx = (e.clientX / window.innerWidth  - .5) * 2;
+      my = (e.clientY / window.innerHeight - .5) * 2;
+      if (!raf) raf = requestAnimationFrame(updateParallax);
+    });
+
+    window.addEventListener('scroll', () => {
+      if (!raf) raf = requestAnimationFrame(updateParallax);
+    }, { passive: true });
+
+    function updateParallax() {
+      raf = null;
+      const scroll = window.scrollY;
+      // Interpolate mouse
+      tx += (mx - tx) * .06;
+      ty += (my - ty) * .06;
+
+      gridFar.style.transform  = `translate(${tx * 18}px, ${ty * 18 - scroll * .4}px)`;
+      gridNear.style.transform = `translate(${tx * 32}px, ${ty * 32 - scroll * .7}px)`;
+
+      // Move shapes
+      document.querySelectorAll('.shape').forEach(s => {
+        const depth = parseFloat(s.dataset.depth) || 1;
+        const baseY = parseFloat(s.dataset.baseY) || 0;
+        s.style.transform = `translate(${tx * 20 * depth}px, ${ty * 20 * depth + baseY - scroll * depth * .5}px) rotate(${s.dataset.rot || 0}deg)`;
+      });
+
+      if (Math.abs(mx - tx) > .001 || Math.abs(my - ty) > .001) {
+        raf = requestAnimationFrame(updateParallax);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SPAWN FLOATING SHAPES
+       ═══════════════════════════════════════════════════════════════ */
+    const shapeDefs = [
+      /* [ svgContent, width, height ] */
+      [`<polygon points="30,0 60,52 0,52" fill="none" stroke="#00f5ff" stroke-width="1.5"/>`, 60, 52],
+      [`<rect x="2" y="2" width="46" height="46" fill="none" stroke="#ff006e" stroke-width="1.5" transform="rotate(15,25,25)"/>`, 50, 50],
+      [`<circle cx="25" cy="25" r="22" fill="none" stroke="#b400ff" stroke-width="1.5" stroke-dasharray="6,4"/>`, 50, 50],
+      [`<polygon points="25,0 50,43 0,43" fill="rgba(0,245,255,0.06)" stroke="#00f5ff" stroke-width="1"/>`, 50, 43],
+      [`<rect x="2" y="2" width="36" height="36" fill="rgba(180,0,255,0.05)" stroke="#b400ff" stroke-width="1"/>`, 40, 40],
+      [`<line x1="0" y1="0" x2="60" y2="60" stroke="#ff006e" stroke-width="1" opacity=".7"/>
+        <line x1="60" y1="0" x2="0" y2="60" stroke="#ff006e" stroke-width="1" opacity=".7"/>`, 60, 60],
+      [`<polygon points="25,0 48,18 39,47 11,47 2,18" fill="none" stroke="#ffe600" stroke-width="1.2"/>`, 50, 47],
+      [`<circle cx="20" cy="20" r="18" fill="none" stroke="#00f5ff" stroke-width="1" stroke-dasharray="3,6"/>`, 40, 40],
+    ];
+
+    const container = document.getElementById('shapes-container');
+    const shapeCount = 18;
+
+    for (let i = 0; i < shapeCount; i++) {
+      const def    = shapeDefs[i % shapeDefs.length];
+      const depth  = (Math.random() * .8 + .2).toFixed(2);
+      const x      = (Math.random() * 120 - 10).toFixed(1);
+      const y      = (Math.random() * 120 - 10).toFixed(1);
+      const scale  = (Math.random() * 1.2 + .5).toFixed(2);
+      const rot    = (Math.random() * 360).toFixed(0);
+      const dur    = (Math.random() * 8 + 6).toFixed(1);
+      const delay  = (Math.random() * 5).toFixed(1);
+      const op     = (Math.random() * .15 + .06).toFixed(2);
+
+      const div = document.createElement('div');
+      div.className = 'shape';
+      div.dataset.depth  = depth;
+      div.dataset.baseY  = 0;
+      div.dataset.rot    = rot;
+      div.style.cssText  = `
+        left: ${x}%; top: ${y}%; opacity: ${op};
+        animation: floatShape ${dur}s ${delay}s ease-in-out infinite alternate;
+        transform-origin: center;
+      `;
+      div.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg"
+        width="${def[1] * scale}" height="${def[2] * scale}"
+        viewBox="0 0 ${def[1]} ${def[2]}">${def[0]}</svg>`;
+      container.appendChild(div);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       CUSTOM CURSOR
+       ═══════════════════════════════════════════════════════════════ */
+    const cursor = document.getElementById('cursor');
+    const trail  = document.getElementById('cursor-trail');
+    let cx = 0, cy = 0, trailX = 0, trailY = 0;
+
+    document.addEventListener('mousemove', e => { cx = e.clientX; cy = e.clientY; });
+
+    (function animCursor() {
+      cursor.style.left = cx + 'px';
+      cursor.style.top  = cy + 'px';
+      trailX += (cx - trailX) * .15;
+      trailY += (cy - trailY) * .15;
+      trail.style.left = trailX + 'px';
+      trail.style.top  = trailY + 'px';
+      requestAnimationFrame(animCursor);
+    })();
+
+    document.querySelectorAll('.game-card, a, button').forEach(el => {
+      el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+      el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+    });
+
+    /* ═══════════════════════════════════════════════════════════════
+       PAGE-LOAD REVEAL
+       ═══════════════════════════════════════════════════════════════ */
+    window.addEventListener('pageshow', () => {
+      const overlay = document.getElementById('transition-overlay');
+      overlay.style.opacity = '1';
+      overlay.style.transition = 'none';
+      requestAnimationFrame(() => {
+        overlay.style.transition = 'opacity .4s ease';
+        overlay.style.opacity    = '0';
+      });
+    });
+  </script>
+</body>
+</html>
