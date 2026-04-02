@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cyber Pong – Neon Arcade Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Base reset & neon theme ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:  #0a0a0a;
+      --cyan:   #00ffff;
+      --pink:   #ff00ff;
+      --purple: #bb00ff;
+      --white:  #e0e0ff;
+      --glow-c: 0 0 6px #00ffff, 0 0 14px #00ffff;
+      --glow-p: 0 0 6px #ff00ff, 0 0 14px #ff00ff;
+    }
+
+    body {
+      background-color: var(--black);
+      background-image:
+        repeating-linear-gradient(0deg,  transparent, transparent 39px, rgba(0,255,255,.04) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,255,255,.04) 40px);
+      font-family: 'Press Start 2P', monospace;
+      color: var(--white);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px 10px 40px;
+    }
+
+    h1.game-title {
+      font-size: clamp(14px, 3vw, 22px);
+      color: var(--cyan);
+      text-shadow: var(--glow-c);
+      text-align: center;
+      margin-bottom: 18px;
+      letter-spacing: 2px;
+    }
+
+    /* ─── Score bar ───────────────────────────────────────────────────────── */
+    .score-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 800px;
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+    .score-label { font-size: 10px; color: rgba(255,255,255,.5); }
+    .score-value {
+      font-size: clamp(18px, 4vw, 28px);
+      transition: transform .15s ease, text-shadow .15s ease;
+    }
+    .score-value.p1 { color: var(--cyan);  text-shadow: var(--glow-c); }
+    .score-value.p2 { color: var(--pink);  text-shadow: var(--glow-p); }
+    .score-value.pop { transform: scale(1.4); }
+    .score-sep { font-size: 20px; color: rgba(255,255,255,.3); }
+
+    /* ─── Canvas wrapper ─────────────────────────────────────────────────── */
+    .canvas-wrap {
+      width: 100%;
+      max-width: 800px;
+      border: 2px solid var(--cyan);
+      box-shadow: var(--glow-c), inset 0 0 60px rgba(0,255,255,.04);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #000;
+    }
+
+    /* overlay messages */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.72);
+      gap: 18px;
+      z-index: 10;
+    }
+    #overlay.hidden { display: none; }
+    #overlay-title {
+      font-size: clamp(14px, 3.5vw, 26px);
+      color: var(--cyan);
+      text-shadow: var(--glow-c);
+      text-align: center;
+      line-height: 1.6;
+    }
+    #overlay-sub {
+      font-size: clamp(8px, 1.8vw, 12px);
+      color: rgba(255,255,255,.6);
+      text-align: center;
+      line-height: 2;
+    }
+
+    /* ─── Neon buttons ───────────────────────────────────────────────────── */
+    .neon-button {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(8px, 1.5vw, 11px);
+      padding: 10px 20px;
+      background: transparent;
+      border: 2px solid var(--cyan);
+      color: var(--cyan);
+      cursor: pointer;
+      text-shadow: var(--glow-c);
+      box-shadow: var(--glow-c);
+      border-radius: 3px;
+      transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+      white-space: nowrap;
+    }
+    .neon-button:hover {
+      background: var(--pink);
+      border-color: var(--pink);
+      color: #000;
+      text-shadow: none;
+      box-shadow: var(--glow-p);
+    }
+    .neon-button.pink {
+      border-color: var(--pink);
+      color: var(--pink);
+      text-shadow: var(--glow-p);
+      box-shadow: var(--glow-p);
+    }
+    .neon-button.pink:hover {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #000;
+      box-shadow: var(--glow-c);
+    }
+
+    /* ─── Controls strip ─────────────────────────────────────────────────── */
+    .controls-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 14px;
+    }
+
+    /* ─── Toast ──────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--black);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-size: 9px;
+      padding: 10px 20px;
+      border-radius: 4px;
+      box-shadow: var(--glow-c);
+      transition: transform .3s ease, opacity .3s ease;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ─── Key legend ─────────────────────────────────────────────────────── */
+    .key-legend {
+      margin-top: 16px;
+      font-size: 8px;
+      color: rgba(255,255,255,.4);
+      text-align: center;
+      line-height: 2.2;
+      max-width: 600px;
+    }
+    .key-legend span { color: var(--cyan); }
+
+    /* ─── High score display ─────────────────────────────────────────────── */
+    .hs-row {
+      margin-top: 12px;
+      font-size: 8px;
+      color: rgba(255,255,255,.4);
+      text-align: center;
+    }
+    .hs-row b { color: var(--purple); }
+  </style>
+</head>
+<body>
+
+<h1 class="game-title">⚡ CYBER PONG ⚡</h1>
+
+<!-- Score bar -->
+<div class="score-bar">
+  <div>
+    <div class="score-label" id="p1-label">PLAYER 1</div>
+    <div class="score-value p1" id="score-p1">0</div>
+  </div>
+  <div class="score-sep">:</div>
+  <div style="text-align:right">
+    <div class="score-label" id="p2-label">CPU</div>
+    <div class="score-value p2" id="score-p2">0</div>
+  </div>
+</div>
+
+<!-- Canvas -->
+<div class="canvas-wrap">
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+  <!-- Overlay (start / game-over screens) -->
+  <div id="overlay">
+    <div id="overlay-title">CYBER PONG</div>
+    <div id="overlay-sub">
+      P1: W / S &nbsp;|&nbsp; P2: ↑ / ↓<br>
+      Mode: <span id="mode-display-overlay" style="color:#0ff">VS AI</span>
+    </div>
+    <button class="neon-button" id="btn-start-overlay">START GAME</button>
+    <button class="neon-button pink" id="btn-toggle-overlay">SWITCH MODE</button>
+  </div>
+</div>
+
+<!-- Controls strip -->
+<div class="controls-strip">
+  <button class="neon-button" id="btn-restart">↺ RESTART</button>
+  <button class="neon-button pink" id="btn-mode">MODE: VS AI</button>
+  <a href="../index.html" class="neon-button" style="text-decoration:none">← HUB</a>
+</div>
+
+<!-- Key legend -->
+<div class="key-legend" id="key-legend">
+  <span>W/S</span> – Player 1 &nbsp;|&nbsp; <span>↑/↓</span> – Player 2 / AI
+</div>
+
+<!-- High score -->
+<div class="hs-row" id="hs-row">Best streak: <b id="hs-display">–</b></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SHARED UTILITIES (mirrors games.js so file is standalone)              -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<script>
+  /* ─── games.js stubs / shared utilities ─────────────────────────────── */
+  function playSound(name) { /* stub */ }
+
+  function updateScore(el, newScore) {
+    if (!el) return;
+    el.textContent = newScore;
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+    setTimeout(() => el.classList.remove('pop'), 200);
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  function saveHighScore(gameName, score) {
+    const key = 'hs_' + gameName;
+    const prev = parseInt(localStorage.getItem(key) || '0', 10);
+    if (score > prev) { localStorage.setItem(key, score); return true; }
+    return false;
+  }
+
+  function getHighScore(gameName) {
+    return parseInt(localStorage.getItem('hs_' + gameName) || '0', 10);
+  }
+
+  function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function debounce(fn, delay) {
+    let id;
+    return (...args) => { clearTimeout(id); id = setTimeout(() => fn(...args), delay); };
+  }
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- GAME SCRIPT                                                             -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<script>
+  /* ═══════════════════════════════════════════════════
+     ENVIRONMENT VARIABLES – edit these to tune the game
+     ═══════════════════════════════════════════════════ */
+  const GAME_MODE      = "vs_ai";   // "vs_ai" | "two_player"
+  const AI_SPEED       = 5;         // CPU paddle speed (px/frame)
+  const AI_REACTION    = 0.10;      // 0 = perfect AI, 1 = very slow reaction
+  const BALL_SPEED_X   = 4;         // initial horizontal ball speed
+  const BALL_SPEED_Y   = 3;         // initial vertical ball speed
+  const WINNING_SCORE  = 7;         // points needed to win
+  const PADDLE_W       = 12;        // paddle width
+  const PADDLE_H       = 80;        // paddle height
+  const BALL_RADIUS    = 7;         // ball radius
+  const TRAIL_LENGTH   = 18;        // number of trail ghost frames
+  const SPEED_INCREMENT= 0.30;      // extra speed added per rally hit
+  const MAX_BALL_SPEED = 14;        // absolute speed cap
+  /* ═══════════════════════════════════════════════════ */
+
+  /* ─── DOM refs ────────────────────────────────────── */
+  const canvas   = document.getElementById('gameCanvas');
+  const ctx      = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const elP1     = document.getElementById('score-p1');
+  const elP2     = document.getElementById('score-p2');
+  const elP1Lbl  = document.getElementById('p1-label');
+  const elP2Lbl  = document.getElementById('p2-label');
+  const overlay  = document.getElementById('overlay');
+  const oTitle   = document.getElementById('overlay-title');
+  const oSub     = document.getElementById('overlay-sub');
+  const oModeDisp= document.getElementById('mode-display-overlay');
+  const btnStart = document.getElementById('btn-start-overlay');
+  const btnToggleOvl = document.getElementById('btn-toggle-overlay');
+  const btnRestart   = document.getElementById('btn-restart');
+  const btnMode      = document.getElementById('btn-mode');
+  const hsDisplay    = document.getElementById('hs-display');
+  const keyLegend    = document.getElementById('key-legend');
+
+  /* ─── Game state ──────────────────────────────────── */
+  let mode = GAME_MODE;           // current mode
+  let gameRunning = false;
+  let animId = null;
+
+  const state = {
+    p1: { y: H/2 - PADDLE_H/2, score: 0, dy: 0 },
+    p2: { y: H/2 - PADDLE_H/2, score: 0, dy: 0 },
+    ball: { x:0, y:0, dx:0, dy:0 },
+    trail: [],
+    rallyCount: 0,
+    paused: false,
+  };
+
+  const keys = {};
+
+  /* ─── Helpers ─────────────────────────────────────── */
+  function resetBall(toRight) {
+    state.ball.x = W / 2;
+    state.ball.y = H / 2;
+    const dir = toRight ? 1 : -1;
+    state.ball.dx = dir * BALL_SPEED_X;
+    state.ball.dy = (Math.random() > .5 ? 1 : -1) * BALL_SPEED_Y;
+    state.trail = [];
+    state.rallyCount = 0;
+  }
+
+  function clampPaddle(p) {
+    p.y = Math.max(0, Math.min(H - PADDLE_H, p.y));
+  }
+
+  function updateLabels() {
+    elP2Lbl.textContent = mode === 'vs_ai' ? 'CPU' : 'PLAYER 2';
+    const modeStr = mode === 'vs_ai' ? 'VS AI' : '2 PLAYER';
+    btnMode.textContent = 'MODE: ' + modeStr;
+    oModeDisp.textContent = modeStr;
+    keyLegend.innerHTML = mode === 'vs_ai'
+      ? '<span>W/S</span> – Player 1 &nbsp;|&nbsp; AI controls right paddle'
+      : '<span>W/S</span> – Player 1 &nbsp;|&nbsp; <span>↑/↓</span> – Player 2';
+  }
+
+  function showHighScore() {
+    const hs = getHighScore('cyberpong');
+    hsDisplay.textContent = hs > 0 ? hs + ' rally pts' : '–';
+  }
+
+  /* ─── neon colour helpers ─────────────────────────── */
+  const CYAN   = '#00ffff';
+  const PINK   = '#ff00ff';
+  const PURPLE = '#bb00ff';
+  const DIM    = 'rgba(255,255,255,0.08)';
+
+  function glowCtx(color, blur) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur  = blur;
+  }
+  function clearGlow() {
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur  = 0;
+  }
+
+  /* ─── Draw functions ──────────────────────────────── */
+  function drawBg() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // center line
+    ctx.setLineDash([10, 14]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function drawPaddle(x, y, color) {
+    glowCtx(color, 22);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(x, y, PADDLE_W, PADDLE_H, 4);
+    ctx.fill();
+    clearGlow();
+  }
+
+  function drawBall() {
+    // trail
+    for (let i = 0; i < state.trail.length; i++) {
+      const t = state.trail[i];
+      const alpha = (i / state.trail.length) * 0.35;
+      const r = BALL_RADIUS * ((i + 1) / state.trail.length) * 0.85;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(0,255,255,${alpha})`;
+      ctx.fill();
+    }
+
+    // ball
+    glowCtx(CYAN, 28);
+    ctx.beginPath();
+    ctx.arc(state.ball.x, state.ball.y, BALL_RADIUS, 0, Math.PI*2);
+    const grad = ctx.createRadialGradient(
+      state.ball.x - 2, state.ball.y - 2, 1,
+      state.ball.x, state.ball.y, BALL_RADIUS
+    );
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(1, CYAN);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    clearGlow();
+  }
+
+  function drawScores() {
+    // already in DOM; just draw optional center glow line
+  }
+
+  function drawWinFlash(winner) {
+    const msg  = winner === 1 ? 'PLAYER 1' : (mode === 'vs_ai' ? 'CPU' : 'PLAYER 2');
+    const clr  = winner === 1 ? CYAN : PINK;
+    glowCtx(clr, 40);
+    ctx.fillStyle = clr;
+    ctx.font = `bold 36px 'Press Start 2P', monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(msg + ' WINS!', W/2, H/2 - 10);
+    clearGlow();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = `12px 'Press Start 2P', monospace`;
+    ctx.fillText('press RESTART', W/2, H/2 + 28);
+    ctx.textAlign = 'left';
+  }
+
+  /* ─── Physics / AI ────────────────────────────────── */
+  function movePaddles() {
+    const speed = AI_SPEED;
+    // Player 1
+    if (keys['w'] || keys['W']) state.p1.y -= speed;
+    if (keys['s'] || keys['S']) state.p1.y += speed;
+
+    // Player 2 or AI
+    if (mode === 'two_player') {
+      if (keys['ArrowUp'])   state.p2.y -= speed;
+      if (keys['ArrowDown']) state.p2.y += speed;
+    } else {
+      // AI: smoothly track ball centre with reaction lag
+      const target = state.ball.y - PADDLE_H / 2;
+      const diff = target - state.p2.y;
+      // move toward target at AI_SPEED, scaled by reaction (>0 = lag)
+      const move = Math.sign(diff) * Math.min(Math.abs(diff), AI_SPEED * (1 - AI_REACTION) + 1);
+      state.p2.y += move;
+    }
+
+    clampPaddle(state.p1);
+    clampPaddle(state.p2);
+  }
+
+  function paddleCollide(px, py, bx, by, bdx) {
+    // bounding box check
+    if (bx - BALL_RADIUS < px + PADDLE_W &&
+        bx + BALL_RADIUS > px &&
+        by + BALL_RADIUS > py &&
+        by - BALL_RADIUS < py + PADDLE_H) {
+
+      // compute hit position on paddle (−1 top … +1 bottom)
+      const hitPos = ((by - py) / PADDLE_H) * 2 - 1;
+      const speed  = Math.min(
+        Math.sqrt(state.ball.dx**2 + state.ball.dy**2) + SPEED_INCREMENT,
+        MAX_BALL_SPEED
+      );
+      // bounce
+      state.ball.dx = -Math.sign(bdx) * Math.abs(speed * Math.cos(hitPos * Math.PI / 4));
+      state.ball.dy =  speed * Math.sin(hitPos * Math.PI / 3);
+      // push ball out of paddle
+      if (bdx > 0) state.ball.x = px - BALL_RADIUS - 1;
+      else          state.ball.x = px + PADDLE_W + BALL_RADIUS + 1;
+
+      state.rallyCount++;
+      playSound('paddle');
+    }
+  }
+
+  function moveBall() {
+    state.trail.push({ x: state.ball.x, y: state.ball.y });
+    if (state.trail.length > TRAIL_LENGTH) state.trail.shift();
+
+    state.ball.x += state.ball.dx;
+    state.ball.y += state.ball.dy;
+
+    // top / bottom wall bounce
+    if (state.ball.y - BALL_RADIUS < 0) {
+      state.ball.y = BALL_RADIUS;
+      state.ball.dy = Math.abs(state.ball.dy);
+      playSound('wall');
+    }
+    if (state.ball.y + BALL_RADIUS > H) {
+      state.ball.y = H - BALL_RADIUS;
+      state.ball.dy = -Math.abs(state.ball.dy);
+      playSound('wall');
+    }
+
+    // paddle collisions
+    paddleCollide(0, state.p1.y, state.ball.x, state.ball.y, state.ball.dx);
+    paddleCollide(W - PADDLE_W, state.p2.y, state.ball.x, state.ball.y, state.ball.dx);
+
+    // scoring
+    if (state.ball.x + BALL_RADIUS < 0) {
+      // P2 scores
+      state.p2.score++;
+      updateScore(elP2, state.p2.score);
+      playSound('score');
+      if (state.p2.score >= WINNING_SCORE) { endGame(2); return; }
+      resetBall(true);
+    }
+    if (state.ball.x - BALL_RADIUS > W) {
+      // P1 scores
+      state.p1.score++;
+      updateScore(elP1, state.p1.score);
+      playSound('score');
+      if (state.p1.score >= WINNING_SCORE) { endGame(1); return; }
+      resetBall(false);
+    }
+  }
+
+  /* ─── Game loop ───────────────────────────────────── */
+  let winner = 0;
+
+  function loop() {
+    if (!gameRunning) return;
+    movePaddles();
+    moveBall();
+
+    drawBg();
+    drawPaddle(0,           state.p1.y, CYAN);
+    drawPaddle(W - PADDLE_W, state.p2.y, PINK);
+    drawBall();
+
+    if (winner) drawWinFlash(winner);
+    animId = requestAnimationFrame(loop);
+  }
+
+  /* ─── Game control ────────────────────────────────── */
+  function startGame() {
+    winner = 0;
+    state.p1.score = 0;
+    state.p2.score = 0;
+    updateScore(elP1, 0);
+    updateScore(elP2, 0);
+    state.p1.y = H/2 - PADDLE_H/2;
+    state.p2.y = H/2 - PADDLE_H/2;
+    resetBall(true);
+    overlay.classList.add('hidden');
+    gameRunning = true;
+    if (animId) cancelAnimationFrame(animId);
+    loop();
+  }
+
+  function endGame(w) {
+    winner = w;
+    gameRunning = false;
+    const wName = w === 1 ? 'Player 1' : (mode === 'vs_ai' ? 'CPU' : 'Player 2');
+    const isNew = saveHighScore('cyberpong', state.rallyCount);
+    showHighScore();
+    const msg = `${wName} wins! Rally: ${state.rallyCount}${isNew ? ' 🏆 New Record!' : ''}`;
+    showToast(msg);
+
+    oTitle.innerHTML = wName.toUpperCase() + '<br>WINS!';
+    oSub.innerHTML = `Rally count: ${state.rallyCount}${isNew ? '<br>🏆 NEW RECORD!' : ''}`;
+    btnToggleOvl.style.display = '';
+    overlay.classList.remove('hidden');
+  }
+
+  function restartGame() {
+    if (animId) cancelAnimationFrame(animId);
+    gameRunning = false;
+    winner = 0;
+    oTitle.textContent = 'CYBER PONG';
+    oSub.innerHTML = `P1: W / S &nbsp;|&nbsp; P2: ↑ / ↓<br>Mode: <span id="mode-display-overlay" style="color:#0ff">${mode === 'vs_ai' ? 'VS AI' : '2 PLAYER'}</span>`;
+    btnToggleOvl.style.display = '';
+    overlay.classList.remove('hidden');
+    updateScore(elP1, 0);
+    updateScore(elP2, 0);
+    // redraw clean frame
+    drawBg();
+    drawPaddle(0,            H/2 - PADDLE_H/2, CYAN);
+    drawPaddle(W - PADDLE_W, H/2 - PADDLE_H/2, PINK);
+  }
+
+  function toggleMode() {
+    mode = mode === 'vs_ai' ? 'two_player' : 'vs_ai';
+    updateLabels();
+  }
+
+  /* ─── Event listeners ─────────────────────────────── */
+  window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (['ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+  });
+  window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+  btnStart.addEventListener('click', startGame);
+  btnToggleOvl.addEventListener('click', toggleMode);
+  btnRestart.addEventListener('click', restartGame);
+  btnMode.addEventListener('click', () => {
+    toggleMode();
+    // if mid-game, restart
+    if (!overlay.classList.contains('hidden') || !gameRunning) return;
+    restartGame();
+  });
+
+  /* ─── Init ────────────────────────────────────────── */
+  updateLabels();
+  showHighScore();
+
+  // initial static frame
+  drawBg();
+  drawPaddle(0,            H/2 - PADDLE_H/2, CYAN);
+  drawPaddle(W - PADDLE_W, H/2 - PADDLE_H/2, PINK);
+</script>
+</body>
+</html>
